@@ -1,0 +1,11 @@
+{
+  "name": "ziwei-lifekline-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd app && npm install",
+    "build": "cd app && npm run build",
+    "dev": "cd app && npm run dev",
+    "preview": "cd app && npm run preview"
+  }
+}
