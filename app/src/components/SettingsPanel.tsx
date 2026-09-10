@@ -7,25 +7,27 @@ import { useState } from 'react'
 import { useSettingsStore } from '@/stores'
 import { Button, Input, Select } from '@/components/ui'
 import type { ModelProvider } from '@/lib/llm'
-import { PROVIDER_CONFIGS } from '@/lib/llm'
+import { PROVIDER_CONFIGS, RECOMMENDED_MODELS, getEffectiveModel, discoverGeminiModels } from '@/lib/llm'
 
 /* ------------------------------------------------------------
    厂商选项
    ------------------------------------------------------------ */
 
 const PROVIDER_OPTIONS: Array<{ value: ModelProvider; label: string }> = [
-  { value: 'kimi', label: 'Kimi (月之暗面)' },
-  { value: 'gemini', label: 'Gemini (Google)' },
-  { value: 'claude', label: 'Claude (Anthropic)' },
-  { value: 'deepseek', label: 'DeepSeek' },
-  { value: 'custom', label: '自定义 (OpenAI 兼容)' },
+  { value: 'gemini', label: 'Gemini (Google 3.8 Flash / 3.0 Pro - 推荐)' },
+  { value: 'deepseek', label: 'DeepSeek (V4.1 Flash / R1 推理)' },
+  { value: 'claude', label: 'Claude (Anthropic Claude 5 / Sonnet 5)' },
+  { value: 'kimi', label: 'Kimi (月之暗面 K3 / 100万长文本)' },
+  { value: 'openai', label: 'OpenAI (GPT-6 Astra / o4-mini)' },
+  { value: 'custom', label: '自定义 (OpenAI 兼容中转)' },
 ]
 
 const API_DOCS: Record<ModelProvider, string> = {
-  kimi: 'https://platform.moonshot.cn',
-  gemini: 'https://aistudio.google.com/apikey',
-  claude: 'https://console.anthropic.com',
   deepseek: 'https://platform.deepseek.com',
+  claude: 'https://console.anthropic.com',
+  gemini: 'https://aistudio.google.com/apikey',
+  kimi: 'https://platform.moonshot.cn',
+  openai: 'https://platform.openai.com/api-keys',
   custom: '',
 }
 
@@ -51,23 +53,49 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
     setSearchApiKey,
   } = useSettingsStore()
 
-  // 当前厂商的配置
-  const currentSettings = providerSettings[provider]
+  // 当前厂商的配置（带安全回退）
+  const currentSettings = providerSettings[provider] || { apiKey: '', customBaseUrl: '', customModel: '' }
 
-  const [localApiKey, setLocalApiKey] = useState(currentSettings.apiKey)
-  const [localBaseUrl, setLocalBaseUrl] = useState(currentSettings.customBaseUrl)
-  const [localModel, setLocalModel] = useState(currentSettings.customModel)
-  const [localSearchApiKey, setLocalSearchApiKey] = useState(searchApiKey)
+  const [localApiKey, setLocalApiKey] = useState(currentSettings.apiKey || '')
+  const [localBaseUrl, setLocalBaseUrl] = useState(currentSettings.customBaseUrl || '')
+  const [localModel, setLocalModel] = useState(currentSettings.customModel || '')
+  const [localSearchApiKey, setLocalSearchApiKey] = useState(searchApiKey || '')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [saved, setSaved] = useState(false)
   const [pendingProvider, setPendingProvider] = useState<ModelProvider | null>(null)
+  const [discovering, setDiscovering] = useState(false)
+  const [discoveredModels, setDiscoveredModels] = useState<string[] | null>(null)
+  const [discoverMessage, setDiscoverMessage] = useState<string | null>(null)
+
+  const handleAutoDiscover = async () => {
+    if (!localApiKey.trim()) {
+      setDiscoverMessage('请先在上方输入您的 Gemini API Key')
+      return
+    }
+    setDiscovering(true)
+    setDiscoverMessage('正在向 Google 查询您账号真实支持的可用模型列表...')
+    try {
+      const res = await discoverGeminiModels(localApiKey, localBaseUrl)
+      if (res && res.models.length > 0) {
+        setDiscoveredModels(res.models)
+        setLocalModel(res.models[0])
+        setDiscoverMessage(`✓ 成功检测到 ${res.models.length} 个可用模型，已自动选定 "${res.models[0]}"`)
+      } else {
+        setDiscoverMessage('未检测到可用模型，请检查 API Key 是否正确或网络是否可达')
+      }
+    } catch (e: any) {
+      setDiscoverMessage(`检测失败: ${e.message || '网络或凭证异常'}`)
+    } finally {
+      setDiscovering(false)
+    }
+  }
 
   // 检查是否有未保存的修改
   const hasUnsavedChanges =
-    localApiKey !== currentSettings.apiKey ||
-    localBaseUrl !== currentSettings.customBaseUrl ||
-    localModel !== currentSettings.customModel ||
-    localSearchApiKey !== searchApiKey
+    localApiKey !== (currentSettings.apiKey || '') ||
+    localBaseUrl !== (currentSettings.customBaseUrl || '') ||
+    localModel !== (currentSettings.customModel || '') ||
+    localSearchApiKey !== (searchApiKey || '')
 
   // 切换厂商时，检查是否有未保存修改
   const handleProviderChange = (newProvider: ModelProvider) => {
@@ -83,10 +111,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   // 实际切换厂商
   const switchToProvider = (newProvider: ModelProvider) => {
     setProvider(newProvider)
-    const newSettings = providerSettings[newProvider]
-    setLocalApiKey(newSettings.apiKey)
-    setLocalBaseUrl(newSettings.customBaseUrl)
-    setLocalModel(newSettings.customModel)
+    const newSettings = providerSettings[newProvider] || { apiKey: '', customBaseUrl: '', customModel: '' }
+    setLocalApiKey(newSettings.apiKey || '')
+    setLocalBaseUrl(newSettings.customBaseUrl || '')
+    setLocalModel(newSettings.customModel || '')
     setPendingProvider(null)
   }
 
@@ -221,9 +249,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
             <div className="mt-4 space-y-4">
               {/* BaseURL */}
               <div>
-                <label className="block text-sm text-text-secondary mb-1.5">
+                <label className="block text-xs font-serif-sc text-[#52666a] mb-1">
                   BaseURL
-                  {hasCustomBaseUrl && <span className="text-amber ml-2 text-xs">已覆盖</span>}
+                  {hasCustomBaseUrl && <span className="text-[#c58a28] ml-2 text-[10px]">已覆盖</span>}
                 </label>
                 <input
                   type="text"
@@ -231,44 +259,148 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                   value={localBaseUrl}
                   onChange={(e) => setLocalBaseUrl(e.target.value)}
                   className={`
-                    w-full px-3 py-2 rounded-lg text-sm
-                    bg-white/5 border transition-colors
-                    placeholder:text-text-muted/50
+                    w-full px-3 py-2 rounded-xl text-xs
+                    bg-white/80 border transition-colors
+                    placeholder:text-[#879397]
                     focus:outline-none focus:ring-1
                     ${hasCustomBaseUrl
-                      ? 'border-amber/50 focus:border-amber focus:ring-amber/30 text-text'
-                      : 'border-white/10 focus:border-star focus:ring-star/30 text-text-secondary'
+                      ? 'border-[#c58a28] focus:border-[#c58a28] text-[#1e2f34]'
+                      : 'border-[#dcd3c1] focus:border-[#176f63] text-[#1e2f34]'
                     }
                   `}
                 />
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-[10px] text-[#879397] mt-0.5">
                   默认: {defaultConfig.baseUrl}
                 </p>
               </div>
 
+              {/* Effective Model Indicator */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#176f63]/5 border border-[#176f63]/20 text-xs">
+                <span className="text-[#52666a]">当前生效模型：</span>
+                <span className="font-mono font-semibold text-[#176f63] bg-white/90 px-2 py-0.5 rounded border border-[#176f63]/20">
+                  {getEffectiveModel(provider, localModel, enableThinking)}
+                </span>
+              </div>
+
               {/* Model */}
               <div>
-                <label className="block text-sm text-text-secondary mb-1.5">
-                  Model
-                  {hasCustomModel && <span className="text-amber ml-2 text-xs">已覆盖</span>}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-serif-sc text-[#52666a]">
+                    Model
+                    {hasCustomModel && <span className="text-[#c58a28] ml-2 text-[10px]">已自定义</span>}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {provider === 'gemini' && (
+                      <button
+                        type="button"
+                        disabled={discovering}
+                        onClick={handleAutoDiscover}
+                        className="text-[10px] text-[#176f63] font-semibold hover:underline flex items-center gap-1 bg-[#176f63]/10 hover:bg-[#176f63]/20 px-2 py-0.5 rounded transition-colors"
+                      >
+                        {discovering ? '⏳ 正在检测...' : '🔍 自动检测可用模型'}
+                      </button>
+                    )}
+                    {hasCustomModel && (
+                      <button
+                        type="button"
+                        onClick={() => setLocalModel('')}
+                        className="text-[10px] text-[#52666a] hover:underline"
+                      >
+                        恢复默认
+                      </button>
+                    )}
+                  </div>
+                </div>
                 <input
                   type="text"
                   placeholder={defaultConfig.defaultModel}
                   value={localModel}
                   onChange={(e) => setLocalModel(e.target.value)}
                   className={`
-                    w-full px-3 py-2 rounded-lg text-sm
-                    bg-white/5 border transition-colors
-                    placeholder:text-text-muted/50
+                    w-full px-3 py-2 rounded-xl text-xs
+                    bg-white/80 border transition-colors
+                    placeholder:text-[#879397]
                     focus:outline-none focus:ring-1
                     ${hasCustomModel
-                      ? 'border-amber/50 focus:border-amber focus:ring-amber/30 text-text'
-                      : 'border-white/10 focus:border-star focus:ring-star/30 text-text-secondary'
+                      ? 'border-[#c58a28] focus:border-[#c58a28] text-[#1e2f34]'
+                      : 'border-[#dcd3c1] focus:border-[#176f63] text-[#1e2f34]'
                     }
                   `}
                 />
-                <p className="text-xs text-text-muted mt-1">
+
+                {discoverMessage && (
+                  <p className="text-[11px] p-2 rounded-lg bg-[#176f63]/10 text-[#176f63] mt-2 border border-[#176f63]/20">
+                    {discoverMessage}
+                  </p>
+                )}
+
+                {/* 动态探测到的可用模型 */}
+                {discoveredModels && discoveredModels.length > 0 && (
+                  <div className="mt-2 space-y-1 bg-[#176f63]/5 p-2 rounded-xl border border-[#176f63]/20">
+                    <span className="text-[10px] text-[#176f63] font-bold block">
+                      ✓ 您账号实测可用模型（点击一键选用）：
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {discoveredModels.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setLocalModel(m)}
+                          className={`text-[11px] px-2.5 py-0.5 rounded-md border transition-all ${
+                            localModel.trim() === m
+                              ? 'bg-[#176f63] text-white border-[#176f63] font-semibold'
+                              : 'bg-white/90 border-[#176f63]/30 text-[#176f63] hover:bg-[#176f63]/15'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 推荐模型一键选取 */}
+                {RECOMMENDED_MODELS[provider]?.length > 0 && (
+                  <div className="mt-2.5 space-y-1.5">
+                    <span className="text-[10px] text-[#879397] block">
+                      最新官方推荐模型（点击一键选用）：
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {RECOMMENDED_MODELS[provider].map((item) => {
+                        const isCurrent =
+                          (localModel.trim() === item.id) ||
+                          (!localModel.trim() && item.id === defaultConfig.defaultModel)
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setLocalModel(item.id)}
+                            className={`
+                              text-[11px] px-2.5 py-1 rounded-lg border transition-all text-left flex items-center gap-1.5
+                              ${isCurrent
+                                ? 'bg-[#176f63] text-white border-[#176f63] shadow-sm font-medium'
+                                : 'bg-white/80 hover:bg-[#176f63]/10 border-[#dcd3c1] text-[#1e2f34]'
+                              }
+                            `}
+                            title={item.description}
+                          >
+                            <span>{item.name}</span>
+                            {item.tag && (
+                              <span
+                                className={`text-[9px] px-1 py-0.5 rounded leading-none ${
+                                  isCurrent ? 'bg-white/20 text-white' : 'bg-[#c58a28]/15 text-[#c58a28]'
+                                }`}
+                              >
+                                {item.tag}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[10px] text-[#879397] mt-1.5">
                   默认: {defaultConfig.defaultModel}
                 </p>
               </div>

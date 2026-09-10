@@ -1,11 +1,11 @@
 /* ============================================================
-   生辰输入表单 - 高级玻璃态设计
+   生辰输入表单 - 扶桑东方雅致羊皮纸风格
    ============================================================ */
 
 import { useState } from 'react'
 import { Button, Input, Select } from '@/components/ui'
 import { generateChart, getShichenOptions, type BirthInfo, type Gender } from '@/lib/astro'
-import { useChartStore } from '@/stores'
+import { useChartStore, useProfileStore } from '@/stores'
 
 const currentYear = new Date().getFullYear()
 
@@ -27,16 +27,22 @@ const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => ({
 const HOUR_OPTIONS = getShichenOptions()
 
 const GENDER_OPTIONS = [
-  { value: 'male', label: '男', icon: '♂' },
-  { value: 'female', label: '女', icon: '♀' },
+  { value: 'male', label: '乾造 · 男命', icon: '♂' },
+  { value: 'female', label: '坤造 · 女命', icon: '♀' },
 ]
 
-export function BirthForm() {
-  const { setBirthInfo, setChart } = useChartStore()
+interface BirthFormProps {
+  onGoToSample?: () => void
+}
 
-  const [year, setYear] = useState(1990)
-  const [month, setMonth] = useState(1)
-  const [day, setDay] = useState(1)
+export function BirthForm({ onGoToSample }: BirthFormProps) {
+  const { setBirthInfo, setChart } = useChartStore()
+  const { profiles, addHistory, completeTask, setMBTIResult, mbtiType } = useProfileStore()
+
+  const [name, setName] = useState('灵官 (本人)')
+  const [year, setYear] = useState(1995)
+  const [month, setMonth] = useState(8)
+  const [day, setDay] = useState(18)
   const [hour, setHour] = useState(12)
   const [gender, setGender] = useState<Gender>('male')
   const [loading, setLoading] = useState(false)
@@ -51,6 +57,21 @@ export function BirthForm() {
 
       setBirthInfo(birthInfo)
       setChart(chart)
+
+      // 提取命宫星曜记录至历史
+      const lifePalace = chart.palaces.find((p) => p.name === '命宫')
+      const stars = lifePalace ? lifePalace.majorStars.map((s) => s.name) : []
+
+      addHistory({
+        name: name.trim() || '客官',
+        birthInfo,
+        lifePalaceMajorStars: stars,
+        bureau: chart.fiveElementsClass || '五行局',
+        zodiac: `${chart.chineseDate} · ${chart.solarDate}`,
+        mbti: mbtiType,
+      })
+
+      completeTask('generate_kline', 15, '生成人生 K 线与大运排盘')
     } catch (error) {
       console.error('排盘失败:', error)
     } finally {
@@ -58,58 +79,137 @@ export function BirthForm() {
     }
   }
 
+  // 从已有档案库快速选择填入
+  const handleSelectProfile = (p: (typeof profiles)[0]) => {
+    setName(p.name)
+    setYear(p.year)
+    setMonth(p.month)
+    setDay(p.day)
+    setHour(p.hour)
+    setGender(p.gender)
+    if (p.mbti) {
+      setMBTIResult(p.mbti)
+    }
+  }
+
+  // 快速载入演示案例
+  const handleQuickDemo = () => {
+    const demoInfo: BirthInfo = { year: 1992, month: 8, day: 15, hour: 12, gender: 'male' }
+    const chart = generateChart(demoInfo)
+    setBirthInfo(demoInfo)
+    setChart(chart)
+
+    addHistory({
+      name: '示范案例 (壬申天同天梁)',
+      birthInfo: demoInfo,
+      lifePalaceMajorStars: ['天同', '天梁'],
+      bureau: '水二局',
+      zodiac: '1992年 猴',
+      mbti: mbtiType,
+    })
+    completeTask('generate_kline', 15, '生成人生 K 线')
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
       className="
-        relative w-full max-w-lg p-8
-        bg-gradient-to-br from-white/[0.06] to-white/[0.02]
-        backdrop-blur-xl border border-white/[0.08] rounded-2xl
-        shadow-[0_8px_40px_rgba(0,0,0,0.3)]
+        relative w-full max-w-lg p-6 sm:p-8
+        bg-white/95 backdrop-blur-md border border-[#dcd3c1] rounded-3xl
+        shadow-[0_16px_40px_rgba(111,82,35,0.08)]
       "
     >
-      {/* 顶部发光线 */}
-      <div
-        className="
-          absolute top-0 left-1/2 -translate-x-1/2
-          w-1/2 h-px
-          bg-gradient-to-r from-transparent via-star/40 to-transparent
-        "
-      />
-
-      {/* 标题区域 */}
-      <div className="text-center mb-8">
+      {/* 顶部印章与标题 */}
+      <div className="text-center mb-6">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <span className="fusang-seal text-xs">扶桑算法</span>
+          <span className="text-xs font-serif text-[#879397]">中州派安星诀 · 纯正太阴历</span>
+        </div>
         <h2
-          className="
-            text-2xl font-semibold mb-2
-            bg-gradient-to-r from-text via-text-secondary to-text
-            bg-clip-text text-transparent
-          "
-          style={{ fontFamily: 'var(--font-serif)' }}
+          className="text-2xl font-bold font-serif-sc text-[#1e2f34] tracking-tight"
         >
-          输入您的出生信息
+          输入出生时间 · 排定人生K线
         </h2>
-        <p className="text-sm text-text-muted">
-          精准排盘，探索命运轨迹
+        <p className="text-xs sm:text-sm text-[#52666a] mt-1">
+          将生辰八字转化为百年大运K线与命运分身
         </p>
       </div>
 
-      <div className="space-y-6">
+      {/* 快速体验快捷入口 */}
+      <div className="mb-6 p-3 rounded-2xl bg-[#f7f1e7]/70 border border-[#dcd3c1]/70 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-base">✨</span>
+          <span className="text-xs text-[#52666a]">初次使用？无需输入即可试用</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleQuickDemo}
+            className="text-xs px-2.5 py-1 rounded-lg bg-[#176f63]/10 text-[#176f63] font-semibold hover:bg-[#176f63]/20 transition-colors"
+          >
+            一键载入样例
+          </button>
+          {onGoToSample && (
+            <button
+              type="button"
+              onClick={onGoToSample}
+              className="text-xs px-2.5 py-1 rounded-lg bg-[#c58a28]/15 text-[#8A5B21] font-semibold hover:bg-[#c58a28]/25 transition-colors"
+            >
+              浏览案例库 →
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        {/* 档案库快捷选择与姓名 */}
+        <div className="space-y-2">
+          {profiles.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+              <span className="text-[11px] font-serif text-[#789087] shrink-0">从档案载入:</span>
+              {profiles.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => handleSelectProfile(p)}
+                  className="px-2.5 py-0.5 rounded-full text-xs font-serif bg-white border border-[#dcd3c1] text-[#24453f] hover:border-[#176f63] hover:text-[#176f63] shrink-0 transition-colors"
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-serif-sc font-medium text-[#52666a] mb-1">
+              测算人姓名 / 称谓
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="例如：灵官、伴侣、父亲"
+              className="w-full px-3 py-2 text-xs rounded-xl border border-[#dcd3c1] bg-white focus:outline-hidden focus:border-[#176f63] font-serif"
+            />
+          </div>
+        </div>
+
         {/* 出生日期区块 */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-text-secondary font-medium">出生日期</span>
+            <span className="text-xs font-serif-sc font-medium text-[#52666a]">
+              出生公历（阳历）日期
+            </span>
             <span
               className="
-                text-xs px-2.5 py-1 rounded-full
-                bg-gradient-to-r from-gold/20 to-gold/10
-                text-gold border border-gold/20
+                text-[10px] px-2 py-0.5 rounded-full
+                bg-[#176f63]/10 text-[#176f63] border border-[#176f63]/20
               "
             >
-              阳历
+              自动转农历
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Select
               options={YEAR_OPTIONS}
               value={year}
@@ -130,26 +230,28 @@ export function BirthForm() {
 
         {/* 出生时辰 */}
         <Select
-          label="出生时辰"
+          label="出生时辰 (23:00后为晚子时自动归属次日)"
           options={HOUR_OPTIONS}
           value={hour}
           onChange={(e) => setHour(Number(e.target.value))}
         />
 
-        {/* 性别选择 - 胶囊按钮组 */}
-        <div className="space-y-2">
-          <span className="text-sm text-text-secondary font-medium">性别</span>
+        {/* 性别选择 */}
+        <div className="space-y-1.5">
+          <span className="text-xs font-serif-sc font-medium text-[#52666a]">
+            命造性别 (决定顺逆大运流向)
+          </span>
           <div className="flex gap-3">
             {GENDER_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
                 className={`
-                  group relative flex-1 py-3 px-4 rounded-xl
+                  group relative flex-1 py-2.5 px-4 rounded-xl
                   flex items-center justify-center gap-2
-                  cursor-pointer transition-all duration-200
+                  cursor-pointer transition-all duration-200 border
                   ${gender === opt.value
-                    ? 'bg-gradient-to-r from-star to-star-dark text-white shadow-[0_4px_20px_rgba(124,58,237,0.3)]'
-                    : 'bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.12]'
+                    ? 'bg-[#176f63] border-[#176f63] text-white shadow-sm'
+                    : 'bg-white border-[#dcd3c1] text-[#52666a] hover:border-[#176f63]/40'
                   }
                 `}
               >
@@ -161,19 +263,7 @@ export function BirthForm() {
                   onChange={() => setGender(opt.value as Gender)}
                   className="sr-only"
                 />
-                <span
-                  className={`
-                    text-lg transition-transform duration-200
-                    ${gender === opt.value ? 'scale-110' : 'opacity-60 group-hover:opacity-80'}
-                  `}
-                >
-                  {opt.icon}
-                </span>
-                <span className="font-medium">{opt.label}</span>
-                {/* 选中指示器 */}
-                {gender === opt.value && (
-                  <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-gold shadow-[0_0_8px_rgba(212,175,55,0.6)]" />
-                )}
+                <span className="text-sm font-serif-sc font-medium">{opt.label}</span>
               </label>
             ))}
           </div>
@@ -181,64 +271,40 @@ export function BirthForm() {
 
         {/* 出生地（可选） */}
         <Input
-          label="出生地（可选）"
-          placeholder="如：北京、成都、乌鲁木齐"
-          hint="用于真太阳时校正，可提高准确度"
+          label="出生城市（可选，用于校正真太阳时）"
+          placeholder="例如：北京、上海、成都、深圳"
         />
 
-        {/* 分隔线 */}
-        <div className="relative py-2">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-white/[0.06]" />
-          </div>
-        </div>
-
         {/* 提交按钮 */}
-        <Button
-          type="submit"
-          variant="gold"
-          size="lg"
-          className="w-full group"
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              排盘中...
-            </>
-          ) : (
-            <>
-              <span>开始排盘</span>
-              <svg
-                className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </>
-          )}
-        </Button>
+        <div className="pt-2">
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            className="w-full btn-fusang font-serif-sc font-semibold tracking-wide"
+            disabled={loading}
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                正在严密排星推算中...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <span>生成完整人生K线与命盘</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* 底部提示 */}
-      <p className="text-xs text-text-muted text-center mt-6 flex items-center justify-center gap-1.5">
-        <svg className="w-3.5 h-3.5 text-star-light" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-        </svg>
-        请输入阳历（公历）日期，系统会自动转为农历排盘
+      <p className="text-[11px] text-[#879397] text-center mt-5 font-serif">
+        系统尊重隐私，所有生辰运算与命盘推演完全在您本地浏览器端执行
       </p>
-
-      {/* 角落装饰 */}
-      <div className="absolute -bottom-2 -right-2 w-16 h-16 opacity-20">
-        <div className="absolute inset-0 rounded-full border border-star/30" />
-        <div className="absolute inset-2 rounded-full border border-gold/20" />
-        <div className="absolute inset-4 rounded-full border border-star/10" />
-      </div>
     </form>
   )
 }

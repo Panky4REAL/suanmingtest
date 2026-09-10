@@ -7,6 +7,7 @@ import { persist } from 'zustand/middleware'
 import type { FunctionalAstrolabe } from '@/lib/astro'
 import type { BirthInfo } from '@/lib/astro'
 import type { LifetimeKLinePoint } from '@/lib/fortune-score'
+import type { ModelProvider } from '@/lib/llm'
 
 /* ------------------------------------------------------------
    命盘状态
@@ -106,15 +107,13 @@ export const useContentCacheStore = create<ContentCacheState>()((set) => ({
    设置状态
    ------------------------------------------------------------ */
 
-type ModelProvider = 'kimi' | 'gemini' | 'claude' | 'deepseek' | 'custom'
-
-interface ProviderSettings {
+export interface ProviderSettings {
   apiKey: string
   customBaseUrl: string
   customModel: string
 }
 
-const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
+export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   apiKey: '',
   customBaseUrl: '',
   customModel: '',
@@ -140,12 +139,13 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
-      provider: 'kimi',
+      provider: 'deepseek',
       providerSettings: {
-        kimi: { ...DEFAULT_PROVIDER_SETTINGS },
-        gemini: { ...DEFAULT_PROVIDER_SETTINGS },
-        claude: { ...DEFAULT_PROVIDER_SETTINGS },
         deepseek: { ...DEFAULT_PROVIDER_SETTINGS },
+        claude: { ...DEFAULT_PROVIDER_SETTINGS },
+        gemini: { ...DEFAULT_PROVIDER_SETTINGS },
+        kimi: { ...DEFAULT_PROVIDER_SETTINGS },
+        openai: { ...DEFAULT_PROVIDER_SETTINGS },
         custom: { ...DEFAULT_PROVIDER_SETTINGS },
       },
       enableThinking: false,
@@ -154,15 +154,18 @@ export const useSettingsStore = create<SettingsState>()(
 
       setProvider: (provider) => set({ provider }),
 
-      updateCurrentProvider: (settings) => set((state) => ({
-        providerSettings: {
-          ...state.providerSettings,
-          [state.provider]: {
-            ...state.providerSettings[state.provider],
-            ...settings,
+      updateCurrentProvider: (settings) => set((state) => {
+        const current = state.providerSettings[state.provider] || { ...DEFAULT_PROVIDER_SETTINGS }
+        return {
+          providerSettings: {
+            ...state.providerSettings,
+            [state.provider]: {
+              ...current,
+              ...settings,
+            },
           },
-        },
-      })),
+        }
+      }),
 
       setEnableThinking: (enable) => set({ enableThinking: enable }),
       setEnableWebSearch: (enable) => set({ enableWebSearch: enable }),
@@ -170,11 +173,32 @@ export const useSettingsStore = create<SettingsState>()(
 
       getCurrentSettings: () => {
         const state = get()
-        return state.providerSettings[state.provider]
+        return state.providerSettings[state.provider] || { ...DEFAULT_PROVIDER_SETTINGS }
       },
     }),
     {
       name: 'ziwei-settings',
+      version: 2,
+      migrate: (persistedState: any) => {
+        const defaultSettings = {
+          deepseek: { ...DEFAULT_PROVIDER_SETTINGS },
+          claude: { ...DEFAULT_PROVIDER_SETTINGS },
+          gemini: { ...DEFAULT_PROVIDER_SETTINGS },
+          kimi: { ...DEFAULT_PROVIDER_SETTINGS },
+          openai: { ...DEFAULT_PROVIDER_SETTINGS },
+          custom: { ...DEFAULT_PROVIDER_SETTINGS },
+        }
+        if (!persistedState) return persistedState
+        return {
+          ...persistedState,
+          providerSettings: {
+            ...defaultSettings,
+            ...(persistedState.providerSettings || {}),
+          },
+        }
+      },
     }
   )
 )
+
+export * from './profile'
