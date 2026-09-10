@@ -6,7 +6,7 @@
     "enabled": true
   },
   "assets": {
-    "directory": "app/dist",
+    "directory": "app/build",
     "not_found_handling": "single-page-application"
   }
 }
