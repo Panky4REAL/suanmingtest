@@ -124,7 +124,7 @@ export function SampleReports({ onLoadCase }: SampleReportsProps) {
       {/* 顶部介绍 */}
       <div className="text-center max-w-2xl mx-auto pt-2 pb-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#176f63]/25 bg-[#176f63]/5 text-[#176f63] text-xs font-serif mb-3">
-          <span>❖ 扶桑典藏案例库</span>
+          <span>❖ 玄机典藏案例库</span>
           <span className="opacity-40">|</span>
           <span>无需输入 · 一键直达体验</span>
         </div>
@@ -132,7 +132,7 @@ export function SampleReports({ onLoadCase }: SampleReportsProps) {
           经典人生格局 · 命运K线示例
         </h2>
         <p className="mt-2 text-sm text-[#52666a]">
-          精选不同性格原型与星曜格局的真实测算样例，直观感受扶桑算法对百年运势走势与人生剧本的深刻洞见。
+          精选不同性格原型与星曜格局的真实测算样例，直观感受玄机算法对百年运势走势与人生剧本的深刻洞见。
         </p>
       </div>
 
@@ -178,7 +178,7 @@ export function SampleReports({ onLoadCase }: SampleReportsProps) {
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 pb-6 border-b border-[#dcd3c1]/70">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="fusang-seal text-xs">扶桑精选</span>
+              <span className="xuanji-seal text-xs">玄机精选</span>
               <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-[#c58a28]/15 text-[#8A5B21] border border-[#c58a28]/30">
                 {currentCase.avatarCode}
               </span>

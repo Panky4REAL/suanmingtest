@@ -3,6 +3,8 @@
    支持 Kimi / Gemini / Claude / DeepSeek / 自定义 OpenAI 兼容
    ============================================================ */
 
+import { streamMasterInference } from './master-engine'
+
 export type ModelProvider = 'kimi' | 'gemini' | 'claude' | 'deepseek' | 'openai' | 'custom'
 
 export interface LLMConfig {
@@ -741,27 +743,57 @@ async function* streamClaude(
 }
 
 /* ------------------------------------------------------------
-   统一流式接口
+   统一流式接口 (集成玄机智能通道与推演引擎)
    ------------------------------------------------------------ */
 
 export async function* streamChat(
   config: LLMConfig,
   messages: ChatMessage[]
 ): AsyncGenerator<string> {
-  switch (config.provider) {
-    case 'gemini':
-      yield* streamGemini(config, messages)
-      break
-    case 'claude':
-      yield* streamClaude(config, messages)
-      break
-    case 'openai':
-    case 'kimi':
-    case 'deepseek':
-    case 'custom':
-    default:
-      yield* streamOpenAICompatible(config, messages)
-      break
+  const isPlaceholderKey =
+    !config.apiKey ||
+    config.apiKey.trim() === '' ||
+    config.apiKey === 'xuanji-official-cloud-channel'
+
+  // 如果没有真实配置外部商业 Key，直接调用玄机专属流式命理推演引擎
+  if (isPlaceholderKey) {
+    yield* streamMasterInference(messages)
+    return
+  }
+
+  // 尝试调用外部大模型接口，如果遇网络或鉴权错误，无缝降级到推演引擎
+  try {
+    let hasEmittedToken = false
+    const stream = (async function* () {
+      switch (config.provider) {
+        case 'gemini':
+          yield* streamGemini(config, messages)
+          break
+        case 'claude':
+          yield* streamClaude(config, messages)
+          break
+        case 'openai':
+        case 'kimi':
+        case 'deepseek':
+        case 'custom':
+        default:
+          yield* streamOpenAICompatible(config, messages)
+          break
+      }
+    })()
+
+    for await (const token of stream) {
+      hasEmittedToken = true
+      yield token
+    }
+
+    // 如果接口响应成功但空文本，由引擎补全
+    if (!hasEmittedToken) {
+      yield* streamMasterInference(messages)
+    }
+  } catch (err) {
+    console.warn('[玄机智能通道] 外部 API 请求异常，无缝切换至玄机命理推演引擎:', err)
+    yield* streamMasterInference(messages)
   }
 }
 

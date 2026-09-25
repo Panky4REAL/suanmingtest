@@ -150,7 +150,8 @@ body {
   opacity: 0.4;
 }
 
-/* 扶桑红印章 (Seal) */
+/* 玄机朱砂印章 (Seal) */
+.xuanji-seal,
 .fusang-seal {
   display: inline-flex;
   align-items: center;
@@ -231,13 +232,15 @@ body {
   transform: scale(0.98);
 }
 
-/* 扶桑翠绿主按钮 */
+/* 玄机翠黛主按钮 */
+.btn-xuanji,
 .btn-fusang {
   background: linear-gradient(135deg, #176f63 0%, #115249 100%);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 16px rgba(23, 111, 99, 0.25);
 }
+.btn-xuanji:hover,
 .btn-fusang:hover {
   background: linear-gradient(135deg, #1d8274 0%, #176f63 100%);
   box-shadow: 0 6px 20px rgba(23, 111, 99, 0.35);

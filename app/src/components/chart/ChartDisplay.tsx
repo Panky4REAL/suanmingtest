@@ -197,7 +197,7 @@ function CenterInfo({ chart, solarDate, gender }: { chart: FunctionalAstrolabe; 
       </div>
 
       <h3 className="text-xl font-bold font-serif-sc text-[#1e2f34] mb-3">
-        扶桑 · 紫微斗数命盘
+        玄机 · 紫微斗数命盘
       </h3>
 
       <div className="text-xs lg:text-sm text-[#52666a] space-y-1.5 text-center font-serif">

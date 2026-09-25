@@ -1,513 +1,283 @@
 /* ============================================================
-   设置面板组件
-   配置 API Key、模型选择等
+   玄机 · 系统偏好与设置中心 (SettingsPanel)
+   - 官方统一智能大模型通道已就绪，无需普通用户手动配置 API Key
+   - 提供 AI 命理文风偏好（玄学典雅 / 通俗生动 / 现代心理学）
+   - 深度思考慢逻辑开关、声音与动效偏好
+   - 折叠收纳“开发者 / 站长私有化接口通道”
    ============================================================ */
 
 import { useState } from 'react'
-import { useSettingsStore } from '@/stores'
-import { Button, Input, Select } from '@/components/ui'
-import type { ModelProvider } from '@/lib/llm'
-import { PROVIDER_CONFIGS, RECOMMENDED_MODELS, getEffectiveModel, discoverGeminiModels } from '@/lib/llm'
-
-/* ------------------------------------------------------------
-   厂商选项
-   ------------------------------------------------------------ */
-
-const PROVIDER_OPTIONS: Array<{ value: ModelProvider; label: string }> = [
-  { value: 'gemini', label: 'Gemini (Google 3.8 Flash / 3.0 Pro - 推荐)' },
-  { value: 'deepseek', label: 'DeepSeek (V4.1 Flash / R1 推理)' },
-  { value: 'claude', label: 'Claude (Anthropic Claude 5 / Sonnet 5)' },
-  { value: 'kimi', label: 'Kimi (月之暗面 K3 / 100万长文本)' },
-  { value: 'openai', label: 'OpenAI (GPT-6 Astra / o4-mini)' },
-  { value: 'custom', label: '自定义 (OpenAI 兼容中转)' },
-]
-
-const API_DOCS: Record<ModelProvider, string> = {
-  deepseek: 'https://platform.deepseek.com',
-  claude: 'https://console.anthropic.com',
-  gemini: 'https://aistudio.google.com/apikey',
-  kimi: 'https://platform.moonshot.cn',
-  openai: 'https://platform.openai.com/api-keys',
-  custom: '',
-}
-
-/* ------------------------------------------------------------
-   设置面板
-   ------------------------------------------------------------ */
+import { useSettingsStore, type AITone } from '@/stores'
 
 interface SettingsPanelProps {
   onClose?: () => void
 }
 
+const TONE_OPTIONS: Array<{ value: AITone; label: string; desc: string; icon: string }> = [
+  {
+    value: 'classical',
+    label: '玄学典雅 · 古赋今析',
+    desc: '文白相济，融汇古籍经典辞赋与现代命理洞察，意境深邃',
+    icon: '📜',
+  },
+  {
+    value: 'modern',
+    label: '通俗生动 · 直截了当',
+    desc: '白话通俗晓畅，少堆砌八股玄学术语，直击现实职场与生活痛点',
+    icon: '💡',
+  },
+  {
+    value: 'psychological',
+    label: '现代心理 · 认知全息',
+    desc: '深度融合 MBTI 认知功能与心理学投射，聚焦潜意识动机与破局成长',
+    icon: '🧠',
+  },
+]
+
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const {
-    provider,
-    providerSettings,
+    aiTone,
+    setAITone,
     enableThinking,
-    enableWebSearch,
-    searchApiKey,
-    setProvider,
-    updateCurrentProvider,
     setEnableThinking,
+    soundEnabled,
+    setSoundEnabled,
+    enableWebSearch,
     setEnableWebSearch,
-    setSearchApiKey,
+    serverEndpoint,
+    serverApiKey,
+    serverModel,
+    setServerConfig,
   } = useSettingsStore()
 
-  // 当前厂商的配置（带安全回退）
-  const currentSettings = providerSettings[provider] || { apiKey: '', customBaseUrl: '', customModel: '' }
+  const [showDeveloperOptions, setShowDeveloperOptions] = useState(false)
+  const [localEndpoint, setLocalEndpoint] = useState(serverEndpoint)
+  const [localApiKey, setLocalApiKey] = useState(serverApiKey)
+  const [localModel, setLocalModel] = useState(serverModel)
+  const [devSaved, setDevSaved] = useState(false)
 
-  const [localApiKey, setLocalApiKey] = useState(currentSettings.apiKey || '')
-  const [localBaseUrl, setLocalBaseUrl] = useState(currentSettings.customBaseUrl || '')
-  const [localModel, setLocalModel] = useState(currentSettings.customModel || '')
-  const [localSearchApiKey, setLocalSearchApiKey] = useState(searchApiKey || '')
-  const [showAdvanced, setShowAdvanced] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [pendingProvider, setPendingProvider] = useState<ModelProvider | null>(null)
-  const [discovering, setDiscovering] = useState(false)
-  const [discoveredModels, setDiscoveredModels] = useState<string[] | null>(null)
-  const [discoverMessage, setDiscoverMessage] = useState<string | null>(null)
-
-  const handleAutoDiscover = async () => {
-    if (!localApiKey.trim()) {
-      setDiscoverMessage('请先在上方输入您的 Gemini API Key')
-      return
-    }
-    setDiscovering(true)
-    setDiscoverMessage('正在向 Google 查询您账号真实支持的可用模型列表...')
-    try {
-      const res = await discoverGeminiModels(localApiKey, localBaseUrl)
-      if (res && res.models.length > 0) {
-        setDiscoveredModels(res.models)
-        setLocalModel(res.models[0])
-        setDiscoverMessage(`✓ 成功检测到 ${res.models.length} 个可用模型，已自动选定 "${res.models[0]}"`)
-      } else {
-        setDiscoverMessage('未检测到可用模型，请检查 API Key 是否正确或网络是否可达')
-      }
-    } catch (e: any) {
-      setDiscoverMessage(`检测失败: ${e.message || '网络或凭证异常'}`)
-    } finally {
-      setDiscovering(false)
-    }
-  }
-
-  // 检查是否有未保存的修改
-  const hasUnsavedChanges =
-    localApiKey !== (currentSettings.apiKey || '') ||
-    localBaseUrl !== (currentSettings.customBaseUrl || '') ||
-    localModel !== (currentSettings.customModel || '') ||
-    localSearchApiKey !== (searchApiKey || '')
-
-  // 切换厂商时，检查是否有未保存修改
-  const handleProviderChange = (newProvider: ModelProvider) => {
-    if (newProvider === provider) return
-
-    if (hasUnsavedChanges) {
-      setPendingProvider(newProvider)
-    } else {
-      switchToProvider(newProvider)
-    }
-  }
-
-  // 实际切换厂商
-  const switchToProvider = (newProvider: ModelProvider) => {
-    setProvider(newProvider)
-    const newSettings = providerSettings[newProvider] || { apiKey: '', customBaseUrl: '', customModel: '' }
-    setLocalApiKey(newSettings.apiKey || '')
-    setLocalBaseUrl(newSettings.customBaseUrl || '')
-    setLocalModel(newSettings.customModel || '')
-    setPendingProvider(null)
-  }
-
-  // 保存并切换
-  const handleSaveAndSwitch = () => {
-    updateCurrentProvider({
-      apiKey: localApiKey,
-      customBaseUrl: localBaseUrl,
-      customModel: localModel,
+  const handleSaveDevConfig = () => {
+    setServerConfig({
+      endpoint: localEndpoint.trim(),
+      apiKey: localApiKey.trim(),
+      model: localModel.trim(),
     })
-    setSearchApiKey(localSearchApiKey)
-    if (pendingProvider) {
-      switchToProvider(pendingProvider)
-    }
+    setDevSaved(true)
+    setTimeout(() => setDevSaved(false), 2000)
   }
-
-  // 放弃修改并切换
-  const handleDiscardAndSwitch = () => {
-    if (pendingProvider) {
-      switchToProvider(pendingProvider)
-    }
-  }
-
-  // 当前厂商的默认配置
-  const defaultConfig = PROVIDER_CONFIGS[provider]
-  const docUrl = API_DOCS[provider]
-
-  const handleSave = () => {
-    updateCurrentProvider({
-      apiKey: localApiKey,
-      customBaseUrl: localBaseUrl,
-      customModel: localModel,
-    })
-    setSearchApiKey(localSearchApiKey)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  // 判断是否有自定义值（用于高亮显示）
-  const hasCustomBaseUrl = localBaseUrl.trim() !== ''
-  const hasCustomModel = localModel.trim() !== ''
 
   return (
-    <div className="glass p-6 w-full max-w-md relative">
-      {/* 未保存修改确认对话框 */}
-      {pendingProvider && (
-        <div className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center z-10 p-4">
-          <div className="bg-surface p-5 rounded-xl max-w-sm w-full space-y-4">
-            <p className="text-text-secondary text-sm">
-              当前配置有未保存的修改，切换厂商将丢失这些修改。
+    <div className="w-full max-w-lg bg-[#fffdf9] border border-[#dcd3c1] rounded-3xl p-6 sm:p-7 shadow-2xl text-[#1e2f34] space-y-6 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+      {/* 标题栏 */}
+      <div className="flex items-center justify-between pb-3 border-b border-[#dcd3c1]/70">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-[#176f63] text-white flex items-center justify-center text-sm font-bold font-serif-sc">
+            玄
+          </div>
+          <div>
+            <h3 className="font-serif-sc font-bold text-base text-[#1e2f34] leading-tight">
+              系统与偏好设置
+            </h3>
+            <p className="text-[10px] text-[#789087] font-serif">
+              XuanJi Preferences & AI Model Controls
             </p>
-            <div className="flex gap-3">
-              <Button
-                onClick={handleDiscardAndSwitch}
-                className="flex-1 !bg-white/10 hover:!bg-white/20"
-              >
-                放弃修改
-              </Button>
-              <Button onClick={handleSaveAndSwitch} className="flex-1">
-                保存并切换
-              </Button>
-            </div>
-            <button
-              onClick={() => setPendingProvider(null)}
-              className="w-full text-sm text-text-muted hover:text-text transition-colors"
-            >
-              取消
-            </button>
           </div>
         </div>
-      )}
-
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">设置</h2>
         {onClose && (
           <button
             onClick={onClose}
-            className="text-text-muted hover:text-text transition-colors"
+            className="w-7 h-7 rounded-full bg-[#f4eddf] text-[#52666a] flex items-center justify-center text-xs hover:bg-[#e4dbca] transition-colors"
           >
             ✕
           </button>
         )}
       </div>
 
-      {/* 横幅提示 */}
-      <div className="mb-4 p-3 rounded-lg bg-star/10 border border-star/20 text-sm text-text-secondary">
-        <span className="text-star">ⓘ</span> 使用中转 API？展开下方「高级设置」修改 URL 和模型
+      {/* 官方算力专线卡片 */}
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#176f63]/10 via-[#176f63]/5 to-[#c58a28]/10 border border-[#176f63]/25 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-[#176f63] text-white flex items-center justify-center text-lg shadow-sm">
+            ⚡
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-serif-sc font-bold text-xs text-[#176f63]">
+                玄机官方 AI 专线
+              </span>
+              <span className="flex items-center gap-1 text-[10px] px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                已连通
+              </span>
+            </div>
+            <p className="text-[11px] text-[#55736b] font-serif mt-0.5">
+              全网大模型算力已由后台统一托管调度，开箱即用，无需您自配 API Key
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {/* 厂商选择 */}
-        <Select
-          label="AI 厂商"
-          options={PROVIDER_OPTIONS}
-          value={provider}
-          onChange={(e) => handleProviderChange(e.target.value as ModelProvider)}
-        />
-
-        {/* API Key */}
-        <Input
-          label="API Key"
-          type="password"
-          placeholder="输入你的 API Key"
-          value={localApiKey}
-          onChange={(e) => setLocalApiKey(e.target.value)}
-        />
-
-        {/* API 文档链接 */}
-        {docUrl && (
-          <p className="text-xs text-text-muted">
-            获取 API Key:{' '}
-            <a href={docUrl} target="_blank" rel="noopener" className="text-star hover:underline">
-              {docUrl.replace('https://', '')}
-            </a>
-          </p>
-        )}
-
-        {/* 高级设置折叠区 */}
-        <div className="border-t border-white/10 pt-4">
-          <button
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-2 text-sm text-text-muted hover:text-text transition-colors w-full"
-          >
-            <span className={`transition-transform ${showAdvanced ? 'rotate-90' : ''}`}>▶</span>
-            高级设置
-            {(hasCustomBaseUrl || hasCustomModel) && (
-              <span className="text-xs text-amber px-1.5 py-0.5 rounded bg-amber/10">已修改</span>
-            )}
-          </button>
-
-          {showAdvanced && (
-            <div className="mt-4 space-y-4">
-              {/* BaseURL */}
-              <div>
-                <label className="block text-xs font-serif-sc text-[#52666a] mb-1">
-                  BaseURL
-                  {hasCustomBaseUrl && <span className="text-[#c58a28] ml-2 text-[10px]">已覆盖</span>}
-                </label>
-                <input
-                  type="text"
-                  placeholder={defaultConfig.baseUrl}
-                  value={localBaseUrl}
-                  onChange={(e) => setLocalBaseUrl(e.target.value)}
-                  className={`
-                    w-full px-3 py-2 rounded-xl text-xs
-                    bg-white/80 border transition-colors
-                    placeholder:text-[#879397]
-                    focus:outline-none focus:ring-1
-                    ${hasCustomBaseUrl
-                      ? 'border-[#c58a28] focus:border-[#c58a28] text-[#1e2f34]'
-                      : 'border-[#dcd3c1] focus:border-[#176f63] text-[#1e2f34]'
-                    }
-                  `}
-                />
-                <p className="text-[10px] text-[#879397] mt-0.5">
-                  默认: {defaultConfig.baseUrl}
-                </p>
-              </div>
-
-              {/* Effective Model Indicator */}
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#176f63]/5 border border-[#176f63]/20 text-xs">
-                <span className="text-[#52666a]">当前生效模型：</span>
-                <span className="font-mono font-semibold text-[#176f63] bg-white/90 px-2 py-0.5 rounded border border-[#176f63]/20">
-                  {getEffectiveModel(provider, localModel, enableThinking)}
-                </span>
-              </div>
-
-              {/* Model */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-serif-sc text-[#52666a]">
-                    Model
-                    {hasCustomModel && <span className="text-[#c58a28] ml-2 text-[10px]">已自定义</span>}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {provider === 'gemini' && (
-                      <button
-                        type="button"
-                        disabled={discovering}
-                        onClick={handleAutoDiscover}
-                        className="text-[10px] text-[#176f63] font-semibold hover:underline flex items-center gap-1 bg-[#176f63]/10 hover:bg-[#176f63]/20 px-2 py-0.5 rounded transition-colors"
-                      >
-                        {discovering ? '⏳ 正在检测...' : '🔍 自动检测可用模型'}
-                      </button>
-                    )}
-                    {hasCustomModel && (
-                      <button
-                        type="button"
-                        onClick={() => setLocalModel('')}
-                        className="text-[10px] text-[#52666a] hover:underline"
-                      >
-                        恢复默认
-                      </button>
+      {/* 1. AI 运势推演文风选择 */}
+      <div className="space-y-2.5">
+        <label className="text-xs font-serif-sc font-bold text-[#52666a] flex items-center gap-1.5">
+          <span>AI 运势文风偏好</span>
+          <span className="text-[10px] font-normal text-[#789087]">(影响详批与分身对白语气)</span>
+        </label>
+        <div className="space-y-2">
+          {TONE_OPTIONS.map((opt) => {
+            const isSelected = aiTone === opt.value
+            return (
+              <div
+                key={opt.value}
+                onClick={() => setAITone(opt.value)}
+                className={`
+                  p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-start gap-3
+                  ${isSelected
+                    ? 'border-[#176f63] bg-[#176f63]/5 shadow-2xs'
+                    : 'border-[#dcd3c1] bg-white hover:border-[#176f63]/40'}
+                `}
+              >
+                <span className="text-xl shrink-0 mt-0.5">{opt.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif-sc font-bold text-xs text-[#1e2f34]">
+                      {opt.label}
+                    </span>
+                    {isSelected && (
+                      <span className="text-xs text-[#176f63] font-bold">✓</span>
                     )}
                   </div>
-                </div>
-                <input
-                  type="text"
-                  placeholder={defaultConfig.defaultModel}
-                  value={localModel}
-                  onChange={(e) => setLocalModel(e.target.value)}
-                  className={`
-                    w-full px-3 py-2 rounded-xl text-xs
-                    bg-white/80 border transition-colors
-                    placeholder:text-[#879397]
-                    focus:outline-none focus:ring-1
-                    ${hasCustomModel
-                      ? 'border-[#c58a28] focus:border-[#c58a28] text-[#1e2f34]'
-                      : 'border-[#dcd3c1] focus:border-[#176f63] text-[#1e2f34]'
-                    }
-                  `}
-                />
-
-                {discoverMessage && (
-                  <p className="text-[11px] p-2 rounded-lg bg-[#176f63]/10 text-[#176f63] mt-2 border border-[#176f63]/20">
-                    {discoverMessage}
+                  <p className="text-[11px] text-[#789087] font-serif mt-0.5 leading-snug">
+                    {opt.desc}
                   </p>
-                )}
-
-                {/* 动态探测到的可用模型 */}
-                {discoveredModels && discoveredModels.length > 0 && (
-                  <div className="mt-2 space-y-1 bg-[#176f63]/5 p-2 rounded-xl border border-[#176f63]/20">
-                    <span className="text-[10px] text-[#176f63] font-bold block">
-                      ✓ 您账号实测可用模型（点击一键选用）：
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {discoveredModels.map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setLocalModel(m)}
-                          className={`text-[11px] px-2.5 py-0.5 rounded-md border transition-all ${
-                            localModel.trim() === m
-                              ? 'bg-[#176f63] text-white border-[#176f63] font-semibold'
-                              : 'bg-white/90 border-[#176f63]/30 text-[#176f63] hover:bg-[#176f63]/15'
-                          }`}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 推荐模型一键选取 */}
-                {RECOMMENDED_MODELS[provider]?.length > 0 && (
-                  <div className="mt-2.5 space-y-1.5">
-                    <span className="text-[10px] text-[#879397] block">
-                      最新官方推荐模型（点击一键选用）：
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {RECOMMENDED_MODELS[provider].map((item) => {
-                        const isCurrent =
-                          (localModel.trim() === item.id) ||
-                          (!localModel.trim() && item.id === defaultConfig.defaultModel)
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setLocalModel(item.id)}
-                            className={`
-                              text-[11px] px-2.5 py-1 rounded-lg border transition-all text-left flex items-center gap-1.5
-                              ${isCurrent
-                                ? 'bg-[#176f63] text-white border-[#176f63] shadow-sm font-medium'
-                                : 'bg-white/80 hover:bg-[#176f63]/10 border-[#dcd3c1] text-[#1e2f34]'
-                              }
-                            `}
-                            title={item.description}
-                          >
-                            <span>{item.name}</span>
-                            {item.tag && (
-                              <span
-                                className={`text-[9px] px-1 py-0.5 rounded leading-none ${
-                                  isCurrent ? 'bg-white/20 text-white' : 'bg-[#c58a28]/15 text-[#c58a28]'
-                                }`}
-                              >
-                                {item.tag}
-                              </span>
-                            )}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
-                <p className="text-[10px] text-[#879397] mt-1.5">
-                  默认: {defaultConfig.defaultModel}
-                </p>
+                </div>
               </div>
-
-              {/* 思考模式开关 */}
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div
-                  className={`
-                    w-10 h-6 rounded-full relative transition-colors
-                    ${enableThinking ? 'bg-star' : 'bg-white/10'}
-                  `}
-                  onClick={() => setEnableThinking(!enableThinking)}
-                >
-                  <div
-                    className={`
-                      absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
-                      ${enableThinking ? 'left-5' : 'left-1'}
-                    `}
-                  />
-                </div>
-                <div>
-                  <span className="text-sm text-text-secondary group-hover:text-text transition-colors">
-                    启用深度思考
-                  </span>
-                  <p className="text-xs text-text-muted">
-                    需模型支持 (Claude/DeepSeek/Gemini 等)
-                  </p>
-                </div>
-              </label>
-
-              {/* 联网搜索开关 */}
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div
-                  className={`
-                    w-10 h-6 rounded-full relative transition-colors
-                    ${enableWebSearch ? 'bg-star' : 'bg-white/10'}
-                  `}
-                  onClick={() => setEnableWebSearch(!enableWebSearch)}
-                >
-                  <div
-                    className={`
-                      absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
-                      ${enableWebSearch ? 'left-5' : 'left-1'}
-                    `}
-                  />
-                </div>
-                <div>
-                  <span className="text-sm text-text-secondary group-hover:text-text transition-colors">
-                    启用联网搜索
-                  </span>
-                  <p className="text-xs text-text-muted">
-                    {provider === 'kimi' || provider === 'gemini'
-                      ? '使用原生搜索能力'
-                      : '需配置 Tavily API'}
-                  </p>
-                </div>
-              </label>
-
-              {/* Tavily API Key (非 Kimi/Gemini 显示) */}
-              {enableWebSearch && provider !== 'kimi' && provider !== 'gemini' && (
-                <div>
-                  <label className="block text-sm text-text-secondary mb-1.5">
-                    Tavily API Key
-                    {localSearchApiKey.trim() && <span className="text-amber ml-2 text-xs">已配置</span>}
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="输入 Tavily API Key"
-                    value={localSearchApiKey}
-                    onChange={(e) => setLocalSearchApiKey(e.target.value)}
-                    className={`
-                      w-full px-3 py-2 rounded-lg text-sm
-                      bg-white/5 border transition-colors
-                      placeholder:text-text-muted/50
-                      focus:outline-none focus:ring-1
-                      ${localSearchApiKey.trim()
-                        ? 'border-amber/50 focus:border-amber focus:ring-amber/30 text-text'
-                        : 'border-white/10 focus:border-star focus:ring-star/30 text-text-secondary'
-                      }
-                    `}
-                  />
-                  <p className="text-xs text-text-muted mt-1">
-                    获取 API Key:{' '}
-                    <a
-                      href="https://tavily.com"
-                      target="_blank"
-                      rel="noopener"
-                      className="text-star hover:underline"
-                    >
-                      tavily.com
-                    </a>
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+            )
+          })}
         </div>
+      </div>
 
-        {/* 保存按钮 */}
-        <Button onClick={handleSave} className="w-full" disabled={!hasUnsavedChanges && !saved}>
-          {saved ? '✓ 已保存' : hasUnsavedChanges ? '保存设置 *' : '保存设置'}
-        </Button>
+      {/* 2. 推演机制与声音偏好 */}
+      <div className="space-y-2.5">
+        <label className="text-xs font-serif-sc font-bold text-[#52666a]">
+          交互体验与声音
+        </label>
+        <div className="space-y-2">
+          {/* 慢逻辑思考模式 */}
+          <div className="p-3.5 rounded-2xl bg-white border border-[#dcd3c1] flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <span className="text-xs font-serif-sc font-bold text-[#1e2f34]">深度推理与慢思考 (R1 Reasoning)</span>
+              <p className="text-[11px] text-[#789087] font-serif">
+                开启后，AI 推演将针对星曜吉凶生克进行多层思维链推演，分析更加透彻
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={enableThinking}
+                onChange={(e) => setEnableThinking(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#176f63]" />
+            </label>
+          </div>
 
-        {/* 隐私提示 */}
-        <p className="text-xs text-text-muted text-center">
-          API Key 仅保存在你的浏览器本地，不会上传到任何服务器。
-        </p>
+          {/* 禅意木鱼音效 */}
+          <div className="p-3.5 rounded-2xl bg-white border border-[#dcd3c1] flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <span className="text-xs font-serif-sc font-bold text-[#1e2f34]">禅意木鱼声效</span>
+              <p className="text-[11px] text-[#789087] font-serif">
+                敲击木鱼积攒功德与操作时的物理音效反馈
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={soundEnabled}
+                onChange={(e) => setSoundEnabled(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#176f63]" />
+            </label>
+          </div>
+
+          {/* 联网检索增强 */}
+          <div className="p-3.5 rounded-2xl bg-white border border-[#dcd3c1] flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <span className="text-xs font-serif-sc font-bold text-[#1e2f34]">联网检索增强</span>
+              <p className="text-[11px] text-[#789087] font-serif">
+                遇到生僻格局或历史典故时，自动联网丰富星盘解读
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={enableWebSearch}
+                onChange={(e) => setEnableWebSearch(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#176f63]" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. 开发者 / 站长私有化接口通道 (折叠区) */}
+      <div className="pt-2 border-t border-[#dcd3c1]/70">
+        <button
+          onClick={() => setShowDeveloperOptions(!showDeveloperOptions)}
+          className="flex items-center justify-between w-full text-xs text-[#789087] hover:text-[#176f63] font-serif py-1 transition-colors"
+        >
+          <span>🛠️ 开发者 / 站长私有化中转通道 (可选)</span>
+          <span className="text-[10px]">{showDeveloperOptions ? '收起 ▲' : '展开 ▼'}</span>
+        </button>
+
+        {showDeveloperOptions && (
+          <div className="mt-3 p-4 rounded-2xl bg-[#faf6ee] border border-[#dcd3c1] space-y-3 animate-fade-in text-xs">
+            <p className="text-[11px] text-[#8A5B21] font-serif">
+              仅供站长或私有部署接入专属商业大模型代理使用。留空则自动走官方统一通道。
+            </p>
+
+            <div className="space-y-1">
+              <label className="text-[#52666a] font-serif">后端中转 Base URL</label>
+              <input
+                type="text"
+                placeholder="例如: https://api.yourdomain.com/v1"
+                value={localEndpoint}
+                onChange={(e) => setLocalEndpoint(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-[#dcd3c1] bg-white text-xs text-[#1e2f34] outline-none focus:border-[#176f63]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#52666a] font-serif">私有 API Key</label>
+              <input
+                type="password"
+                placeholder="sk-..."
+                value={localApiKey}
+                onChange={(e) => setLocalApiKey(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-[#dcd3c1] bg-white text-xs text-[#1e2f34] outline-none focus:border-[#176f63]"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[#52666a] font-serif">指定大模型 (Model ID)</label>
+              <input
+                type="text"
+                placeholder="例如: deepseek-chat 或 gemini-2.5-flash"
+                value={localModel}
+                onChange={(e) => setLocalModel(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-[#dcd3c1] bg-white text-xs text-[#1e2f34] outline-none focus:border-[#176f63]"
+              />
+            </div>
+
+            <button
+              onClick={handleSaveDevConfig}
+              className="px-4 py-1.5 rounded-xl bg-[#176f63] text-white text-xs font-serif font-bold shadow-2xs hover:bg-[#1d8274] transition-colors"
+            >
+              {devSaved ? '✓ 已保存私有配置' : '保存私有化配置'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

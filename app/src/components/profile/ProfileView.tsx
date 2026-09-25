@@ -82,7 +82,7 @@ export function ProfileView({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#176f63] to-[#c58a28] text-white flex items-center justify-center font-serif-sc font-black text-2xl shadow-sm shrink-0">
-              桑
+              玄
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -90,11 +90,11 @@ export function ProfileView({
                   {userName}
                 </h1>
                 <span className="text-[10px] font-bold font-serif-sc px-2.5 py-0.5 rounded-full bg-[#176f63] text-white">
-                  {membershipTier === 'master' ? '扶桑天师 VIP' : membershipTier === 'pro' ? '寻道者 Pass' : '普通道友'}
+                  {membershipTier === 'master' ? '玄机天师 VIP' : membershipTier === 'pro' ? '寻道者 Pass' : '普通道友'}
                 </span>
               </div>
               <p className="text-xs text-[#789087] font-mono mt-1">
-                通行工牌: {userId} · 扶桑 AI 命运可视化
+                通行工牌: {userId} · 玄机 AI 命运可视化
               </p>
             </div>
           </div>
@@ -123,7 +123,7 @@ export function ProfileView({
 
             <button
               onClick={() => setShowTaskModal(true)}
-              className="btn-fusang px-4 py-3 rounded-2xl text-xs font-bold font-serif-sc shadow-xs flex items-center gap-1.5"
+              className="btn-xuanji px-4 py-3 rounded-2xl text-xs font-bold font-serif-sc shadow-xs flex items-center gap-1.5"
             >
               <span>🎁 功德任务</span>
             </button>

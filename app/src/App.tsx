@@ -21,6 +21,8 @@ import { MatchAnalysis } from '@/components/match'
 import { ShareCard } from '@/components/share'
 import { MBTIAnalysisView } from '@/components/mbti'
 import { ProfileView, TaskRewardModal, SubscriptionModal, HistoryView } from '@/components/profile'
+import { AuthModal } from '@/components/auth'
+import { CheckoutModal } from '@/components/payment'
 import { useChartStore, useProfileStore } from '@/stores'
 
 type TabType =
@@ -60,13 +62,15 @@ const NAV_ITEMS: Array<{
 
 export default function App() {
   const { chart, birthInfo, clear } = useChartStore()
-  const { userName, gongde } = useProfileStore()
+  const { userName, gongde, isLoggedIn, membershipTier } = useProfileStore()
 
   const [activeTab, setActiveTab] = useState<TabType>('kline')
   const [showSettings, setShowSettings] = useState(false)
   const [showFAQ, setShowFAQ] = useState(false)
   const [showTasks, setShowTasks] = useState(false)
   const [showSubscription, setShowSubscription] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -110,17 +114,17 @@ export default function App() {
 
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5'}`}>
             {/* Logo 徽章 */}
-            <div className="w-10 h-10 rounded-2xl bg-white border border-[#176f63]/25 flex items-center justify-center shadow-xs shrink-0 text-[#176f63]">
-              <span className="font-serif-sc font-black text-xl">桑</span>
+            <div className="w-10 h-10 rounded-2xl bg-[#176f63] border border-[#176f63]/25 flex items-center justify-center shadow-xs shrink-0 text-white">
+              <span className="font-serif-sc font-black text-xl">玄</span>
             </div>
 
             {!sidebarCollapsed && (
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-bold font-serif-sc tracking-tight text-[#24453f] truncate">
-                  扶桑 · 人生K线
+                  玄机 · 人生K线
                 </span>
                 <span className="text-[10px] text-[#6d8980] tracking-wider uppercase font-serif truncate">
-                  Chart destiny
+                  XuanJi Destiny · 命理全息
                 </span>
               </div>
             )}
@@ -257,10 +261,10 @@ export default function App() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#176f63]/20">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-white border border-[#176f63]/25 flex items-center justify-center text-[#176f63] font-serif-sc font-black">
-                  桑
+                <div className="w-8 h-8 rounded-xl bg-[#176f63] border border-[#176f63]/25 flex items-center justify-center text-white font-serif-sc font-black">
+                  玄
                 </div>
-                <span className="font-serif-sc font-bold text-sm text-[#24453f]">扶桑 · 人生K线</span>
+                <span className="font-serif-sc font-bold text-sm text-[#24453f]">玄机 · 人生K线</span>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
@@ -352,7 +356,7 @@ export default function App() {
                   {NAV_ITEMS.find((n) => n.key === activeTab)?.label}
                 </span>
                 <span className="text-[10px] text-[#879397] font-serif hidden sm:inline-block">
-                  · 扶桑 AI 命运可视化
+                  · 玄机 AI 命运全息可视化
                 </span>
               </div>
             </div>
@@ -380,6 +384,40 @@ export default function App() {
               </button>
             )}
 
+            {/* 登录/账号快捷状态 */}
+            {!isLoggedIn ? (
+              <button
+                onClick={() => setShowAuth(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif-sc font-bold border border-[#176f63] bg-[#176f63] text-white hover:bg-[#1d8274] transition-all shadow-xs"
+              >
+                <span>🔑 登录 / 注册</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-white font-mono">
+                  +100功德
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setActiveTab('profile')}
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-serif-sc bg-white/90 border border-[#dcd3c1] hover:border-[#176f63] transition-colors"
+                title="个人中心"
+              >
+                <span className="w-4 h-4 rounded-full bg-[#176f63] text-white text-[10px] flex items-center justify-center font-bold">
+                  {userName.slice(0, 1) || '玄'}
+                </span>
+                <span className="font-medium text-[#24453f] max-w-[80px] truncate">{userName}</span>
+              </button>
+            )}
+
+            {/* 会员开通 / 升级按钮 */}
+            <button
+              onClick={() => setShowCheckout(true)}
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-serif-sc font-bold text-white shadow-2xs transition-opacity hover:opacity-95"
+              style={{ background: 'linear-gradient(135deg, #176f63, #c58a28)' }}
+              title="开通 Pass 订阅特权"
+            >
+              <span>{membershipTier === 'master' ? '🔱 天师' : membershipTier === 'pro' ? '👑 Pass' : '✦ 开通会员'}</span>
+            </button>
+
             <button
               onClick={() => setShowTasks(true)}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif border border-[#c58a28]/40 bg-[#c58a28]/10 text-[#8A5B21] hover:bg-[#c58a28]/20 transition-colors"
@@ -400,7 +438,7 @@ export default function App() {
             <button
               onClick={() => setShowSettings(true)}
               className="w-8 h-8 rounded-full border border-[#dcd3c1] bg-white flex items-center justify-center text-xs text-[#52666a] hover:text-[#176f63] hover:border-[#176f63] transition-colors"
-              title="设置"
+              title="偏好设置"
             >
               ⚙️
             </button>
@@ -562,7 +600,7 @@ export default function App() {
           >
             <div className="flex items-center justify-between pb-2 border-b border-[#dcd3c1]/70">
               <div className="flex items-center gap-2">
-                <span className="fusang-seal text-xs">扶桑问答</span>
+                <span className="xuanji-seal text-xs">玄机问答</span>
                 <h3 className="font-serif-sc font-bold text-lg">常见问题与算法说明</h3>
               </div>
               <button
@@ -587,22 +625,28 @@ export default function App() {
                 </p>
               </div>
               <div>
-                <strong className="text-[#1e2f34] block font-serif-sc">Q3: 我的 API Key 安全吗？</strong>
+                <strong className="text-[#1e2f34] block font-serif-sc">Q3: 我需要自己配置 AI 模型的 API Key 吗？</strong>
                 <p className="mt-0.5">
-                  系统采用纯前端运行架构，您的 API Key 以及排盘运算完全保留在您本地浏览器的 LocalStorage 中，绝不向任何第三方后端转存。
+                  不需要！玄机已在云端后台全额统一部署了高性能大模型推理算力专线，所有用户即开即用。您的排盘生辰与档案数据保存在您本地沙盒中，安全隐私无忧。
                 </p>
               </div>
             </div>
 
             <button
               onClick={() => setShowFAQ(false)}
-              className="w-full btn-fusang py-2.5 rounded-xl text-xs font-semibold"
+              className="w-full btn-xuanji py-2.5 rounded-xl text-xs font-semibold"
             >
               我知道了
             </button>
           </div>
         </div>
       )}
+
+      {/* 统一登录/注册弹窗 */}
+      <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} />
+
+      {/* 商业化收银台与付费弹窗 */}
+      <CheckoutModal isOpen={showCheckout} onClose={() => setShowCheckout(false)} />
     </div>
   )
 }

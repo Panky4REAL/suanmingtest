@@ -122,7 +122,7 @@ export function BirthForm({ onGoToSample }: BirthFormProps) {
       {/* 顶部印章与标题 */}
       <div className="text-center mb-6">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="fusang-seal text-xs">扶桑算法</span>
+          <span className="xuanji-seal text-xs">玄机算法</span>
           <span className="text-xs font-serif text-[#879397]">中州派安星诀 · 纯正太阴历</span>
         </div>
         <h2

@@ -214,7 +214,7 @@ export function MBTIQuiz({ onComplete, onCancel }: MBTIQuizProps) {
           {/* 顶栏进度与速选按钮 */}
           <div className="flex items-center justify-between pb-3 border-b border-[#dcd3c1]/70">
             <div className="flex items-center gap-2">
-              <span className="fusang-seal text-xs">扶桑心律</span>
+              <span className="xuanji-seal text-xs">玄机心律</span>
               <span className="text-xs font-serif text-[#789087]">
                 第 {currentIndex + 1} / {MBTI_QUESTIONS.length} 题
               </span>

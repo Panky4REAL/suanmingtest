@@ -292,7 +292,7 @@ export function DestinyAvatar() {
       {/* 顶部标题区 */}
       <div className="text-center max-w-2xl mx-auto pt-2 pb-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#176f63]/25 bg-[#176f63]/5 text-[#176f63] text-xs font-serif mb-3">
-          <span>❖ 扶桑 · 命运分身体系</span>
+          <span>❖ 玄机 · 命运分身体系</span>
           <span className="opacity-40">|</span>
           <span>160种命运人格原型</span>
         </div>

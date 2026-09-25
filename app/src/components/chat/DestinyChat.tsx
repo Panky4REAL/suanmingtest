@@ -39,7 +39,7 @@ export function DestinyChat() {
     {
       role: 'assistant',
       content:
-        '“天行健，君子以自强不息；地势坤，君子以厚德载物。”\n\n欢迎来到**扶桑 · 命运分身顾问**。我已通览您的命盘格局与人生K线走势。您可以在此处就事业、财帛、情感正缘、大运转折等任何关切之惑向我垂询。',
+        '“天行健，君子以自强不息；地势坤，君子以厚德载物。”\n\n欢迎来到**玄机 · 命运分身顾问**。我已通览您的命盘格局与人生K线走势。您可以在此处就事业、财帛、情感正缘、大运转折等任何关切之惑向我垂询。',
     },
   ])
   const [input, setInput] = useState('')
@@ -65,7 +65,7 @@ ${chart.palaces.map((p) => `- ${p.name}(${p.earthlyBranch}): 主星[${p.majorSta
 `
     }
 
-    return `你是「扶桑·人生K线」的顶级命理大师与命运分身顾问。你融合了中州派紫微斗数、现代心理学与商业宏观周期洞察。
+    return `你是「玄机·人生K线」的顶级命理大师与命运分身顾问。你融合了中州派紫微斗数、现代心理学与商业宏观周期洞察。
 你的风格：古雅温润、字字珠玑、直击本质、充满哲思，兼具现实可行性与心灵宽慰。
 请结合以下命盘上下文，深入浅出地解答用户的提问。结构清晰，有理有据，避免机械罗列八股术语，多给出具有人生杠杆效应的明智建议。
 命盘信息如下：
@@ -219,11 +219,11 @@ ${contextStr}`
         {loading && (
           <div className="flex gap-3 justify-start">
             <div className="w-8 h-8 rounded-full bg-[#176f63] text-white flex items-center justify-center text-xs font-serif shrink-0 shadow-sm mt-1">
-              桑
+              玄
             </div>
             <div className="p-4 rounded-2xl bg-white border border-[#dcd3c1] text-[#52666a] text-xs flex items-center gap-2 shadow-sm">
               <span className="w-3.5 h-3.5 border-2 border-[#176f63] border-t-transparent rounded-full animate-spin" />
-              <span>扶桑分身正在研析命盘星象...</span>
+              <span>玄机分身正在研析命盘星象...</span>
             </div>
           </div>
         )}
@@ -242,14 +242,14 @@ ${contextStr}`
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="向扶桑命运分身提问（如：我今年适合跳槽或创业吗？）..."
+          placeholder="向玄机命运分身提问（如：我今年适合跳槽或创业吗？）..."
           disabled={loading}
           className="flex-1 px-4 py-3 rounded-xl border border-[#dcd3c1] bg-white text-sm text-[#1e2f34] placeholder:text-[#879397] focus:outline-none focus:border-[#176f63] shadow-sm disabled:bg-gray-100"
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="btn-fusang px-6 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
+          className="btn-xuanji px-6 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
         >
           <span>发送</span>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -63,9 +63,30 @@ export interface MeritLog {
 }
 
 export type MembershipTier = 'free' | 'pro' | 'master'
+export type LoginMethod = 'phone' | 'wechat' | 'email' | 'guest'
+
+export interface OrderRecord {
+  orderId: string
+  planName: string
+  tier: MembershipTier
+  durationDays: number
+  price: number // 实付金额
+  originalPrice: number // 原价
+  gongdeDeducted: number // 功德抵扣额
+  paymentMethod: 'wechat' | 'alipay' | 'gongde'
+  status: 'paid' | 'pending' | 'cancelled'
+  createdAt: number
+  paidAt?: number
+}
 
 interface ProfileState {
-  // 用户基础身份
+  // 用户基础身份与登录认证
+  isLoggedIn: boolean
+  loginMethod: LoginMethod
+  userPhone: string
+  userEmail: string
+  avatarUrl: string
+
   userId: string
   userName: string
   avatarBadge: string
@@ -95,7 +116,16 @@ interface ProfileState {
   profiles: BirthProfile[]
   history: HistoryRecord[]
 
+  // 订单与付费流水
+  orders: OrderRecord[]
+
   // 动作 Actions
+  login: (params: { method: LoginMethod; account?: string; nickname?: string }) => void
+  logout: () => void
+  bindPhone: (phone: string) => void
+  bindEmail: (email: string) => void
+  createAndPayOrder: (order: Omit<OrderRecord, 'orderId' | 'status' | 'createdAt' | 'paidAt'>) => OrderRecord
+
   updateUserName: (name: string) => void
   addProfile: (profile: Omit<BirthProfile, 'id' | 'createdAt'>) => string
   updateProfile: (id: string, updates: Partial<BirthProfile>) => void
@@ -167,20 +197,27 @@ const INITIAL_PROFILES: BirthProfile[] = [
 export const useProfileStore = create<ProfileState>()(
   persist(
     (set, get) => ({
-      userId: 'LK-' + Math.floor(10000000 + Math.random() * 90000000),
-      userName: '灵官道友',
-      avatarBadge: '桑',
+      // 登录与账号体系
+      isLoggedIn: true,
+      loginMethod: 'phone',
+      userPhone: '138****6688',
+      userEmail: 'xuanji@destiny.ai',
+      avatarUrl: '',
+
+      userId: 'XJ-' + Math.floor(10000000 + Math.random() * 90000000),
+      userName: '玄机道友',
+      avatarBadge: '玄',
       membershipTier: 'free',
       vipExpiresAt: null,
 
-      gongde: 108,
+      gongde: 168,
       lastSignInDate: '',
       completedTasks: [],
       meritLogs: [
         {
           id: 'log_init',
-          title: '初入扶桑福慧迎新',
-          change: 108,
+          title: '初入玄机福慧迎新',
+          change: 168,
           timestamp: Date.now() - 86400000,
         },
       ],
@@ -201,7 +238,7 @@ export const useProfileStore = create<ProfileState>()(
       history: [
         {
           id: 'hist_init_demo',
-          name: '灵官 (我的命盘)',
+          name: '玄机道友 (我的命盘)',
           birthInfo: {
             year: 1995,
             month: 8,
@@ -217,7 +254,83 @@ export const useProfileStore = create<ProfileState>()(
         },
       ],
 
-      updateUserName: (name: string) => set({ userName: name.trim() || '灵官道友' }),
+      orders: [
+        {
+          orderId: 'ORD-88239012',
+          planName: '玄机体验礼包 (迎新赠送)',
+          tier: 'free',
+          durationDays: 365,
+          price: 0,
+          originalPrice: 99,
+          gongdeDeducted: 0,
+          paymentMethod: 'gongde',
+          status: 'paid',
+          createdAt: Date.now() - 86400000,
+          paidAt: Date.now() - 86400000,
+        },
+      ],
+
+      // 登录与账号操作
+      login: ({ method, account, nickname }) => {
+        const currentPhone = method === 'phone' && account ? account : get().userPhone || '138****6688'
+        const currentEmail = method === 'email' && account ? account : get().userEmail || 'xuanji@destiny.ai'
+        const displayName = nickname || (account ? `道友_${account.slice(-4)}` : '玄机道友')
+        set({
+          isLoggedIn: true,
+          loginMethod: method,
+          userPhone: currentPhone,
+          userEmail: currentEmail,
+          userName: displayName,
+          avatarBadge: displayName.slice(0, 1) || '玄',
+        })
+        get().addGongde(66, '玄机道友登录结缘福利')
+      },
+
+      logout: () => {
+        set({
+          isLoggedIn: false,
+          loginMethod: 'guest',
+          userName: '访客道友',
+          userPhone: '',
+          userEmail: '',
+          avatarBadge: '客',
+        })
+      },
+
+      bindPhone: (phone) => set({ userPhone: phone }),
+      bindEmail: (email) => set({ userEmail: email }),
+
+      createAndPayOrder: (orderParams) => {
+        const orderId = 'ORD-' + Date.now().toString().slice(-6) + Math.floor(100 + Math.random() * 900)
+        const newOrder: OrderRecord = {
+          ...orderParams,
+          orderId,
+          status: 'paid',
+          createdAt: Date.now(),
+          paidAt: Date.now(),
+        }
+
+        // 功德抵扣扣减
+        if (orderParams.gongdeDeducted > 0) {
+          get().addGongde(-orderParams.gongdeDeducted, `开通 ${orderParams.planName} 功德抵扣`)
+        }
+
+        // 升级会员天数
+        get().upgradeMembership(orderParams.tier, orderParams.durationDays)
+
+        // 赠送额外功德
+        const bonus = orderParams.tier === 'master' ? 300 : 80
+        get().addGongde(bonus, `开通 ${orderParams.planName} 赠送功德`)
+
+        // 沉淀订单记录
+        set((state) => ({
+          orders: [newOrder, ...state.orders],
+        }))
+
+        return newOrder
+      },
+
+      updateUserName: (name: string) => set({ userName: name.trim() || '玄机道友' }),
 
       addProfile: (profileData) => {
         const id = 'prof_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)

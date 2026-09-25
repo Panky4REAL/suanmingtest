@@ -196,10 +196,6 @@ export function YearlyFortune() {
 
   const handleAnalyze = useCallback(async () => {
     if (!chart || !birthInfo) return
-    if (!currentSettings.apiKey) {
-      setError('请先在设置中配置 API Key')
-      return
-    }
 
     setLoading(true)
     setError(null)
@@ -303,7 +299,7 @@ ${yearlyContext}
 
             <Button
               onClick={handleAnalyze}
-              disabled={loading || !currentSettings.apiKey}
+              disabled={loading}
               size="sm"
               variant="gold"
             >
@@ -312,7 +308,7 @@ ${yearlyContext}
                   <span className="w-3 h-3 border-2 border-night border-t-transparent rounded-full animate-spin" />
                   分析中
                 </span>
-              ) : currentSettings.apiKey ? '查看运势' : '请先配置 API'}
+              ) : '查看运势'}
             </Button>
           </div>
         </div>
@@ -343,19 +339,11 @@ ${yearlyContext}
           "
         />
 
-        {/* 未配置提示 */}
-        {!currentSettings.apiKey && !fortune && (
-          <div className="text-text-muted text-sm py-8 text-center">
-            <div className="text-3xl mb-3 opacity-30">◎</div>
-            请先在设置中配置 AI 模型的 API Key，即可获得年度运势分析。
-          </div>
-        )}
-
         {/* 未分析提示 */}
-        {currentSettings.apiKey && !fortune && !loading && (
+        {!fortune && !loading && (
           <div className="text-text-muted text-sm py-8 text-center">
             <div className="text-3xl mb-3 opacity-30">◎</div>
-            选择年份并点击「查看运势」开始分析
+            选择年份并点击「查看运势」由玄机官方 AI 开始深度推演
           </div>
         )}
 

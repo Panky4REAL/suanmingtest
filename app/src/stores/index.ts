@@ -119,6 +119,8 @@ export const DEFAULT_PROVIDER_SETTINGS: ProviderSettings = {
   customModel: '',
 }
 
+export type AITone = 'classical' | 'modern' | 'psychological'
+
 interface SettingsState {
   provider: ModelProvider
   providerSettings: Record<ModelProvider, ProviderSettings>
@@ -126,13 +128,24 @@ interface SettingsState {
   enableWebSearch: boolean   // 启用联网搜索
   searchApiKey: string       // 第三方搜索 API (Tavily)
 
+  // 玄机平台官方统一通道与用户偏好
+  aiTone: AITone
+  soundEnabled: boolean
+  serverEndpoint: string
+  serverApiKey: string
+  serverModel: string
+
+  setAITone: (tone: AITone) => void
+  setSoundEnabled: (enabled: boolean) => void
+  setServerConfig: (config: { endpoint?: string; apiKey?: string; model?: string }) => void
+
   setProvider: (provider: ModelProvider) => void
   updateCurrentProvider: (settings: Partial<ProviderSettings>) => void
   setEnableThinking: (enable: boolean) => void
   setEnableWebSearch: (enable: boolean) => void
   setSearchApiKey: (key: string) => void
 
-  // 便捷访问当前厂商配置
+  // 便捷访问当前配置（自动兜底官方智能通道，免去用户手动配置门槛）
   getCurrentSettings: () => ProviderSettings
 }
 
@@ -151,6 +164,20 @@ export const useSettingsStore = create<SettingsState>()(
       enableThinking: false,
       enableWebSearch: false,
       searchApiKey: '',
+
+      aiTone: 'classical',
+      soundEnabled: true,
+      serverEndpoint: '',
+      serverApiKey: '',
+      serverModel: '',
+
+      setAITone: (aiTone) => set({ aiTone }),
+      setSoundEnabled: (soundEnabled) => set({ soundEnabled }),
+      setServerConfig: (config) => set((state) => ({
+        serverEndpoint: config.endpoint !== undefined ? config.endpoint : state.serverEndpoint,
+        serverApiKey: config.apiKey !== undefined ? config.apiKey : state.serverApiKey,
+        serverModel: config.model !== undefined ? config.model : state.serverModel,
+      })),
 
       setProvider: (provider) => set({ provider }),
 
@@ -173,7 +200,34 @@ export const useSettingsStore = create<SettingsState>()(
 
       getCurrentSettings: () => {
         const state = get()
-        return state.providerSettings[state.provider] || { ...DEFAULT_PROVIDER_SETTINGS }
+        const custom = state.providerSettings[state.provider] || { ...DEFAULT_PROVIDER_SETTINGS }
+        const envKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_AI_API_KEY) || ''
+        const envUrl = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_AI_API_URL) || ''
+        const envModel = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_AI_MODEL) || ''
+
+        const effectiveKey =
+          state.serverApiKey ||
+          custom.apiKey ||
+          envKey ||
+          'xuanji-official-cloud-channel'
+
+        const effectiveBaseUrl =
+          state.serverEndpoint ||
+          custom.customBaseUrl ||
+          envUrl ||
+          ''
+
+        const effectiveModel =
+          state.serverModel ||
+          custom.customModel ||
+          envModel ||
+          ''
+
+        return {
+          apiKey: effectiveKey,
+          customBaseUrl: effectiveBaseUrl,
+          customModel: effectiveModel,
+        }
       },
     }),
     {

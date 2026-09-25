@@ -90,7 +90,7 @@ function CustomTooltip({ active, payload }: TooltipProps) {
         {data.reason || (
           <span className="text-[#879397] flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 border-2 border-[#176f63] border-t-transparent rounded-full animate-spin" />
-            扶桑算法深度推演中...
+            玄机算法深度推演中...
           </span>
         )}
       </div>
@@ -306,7 +306,7 @@ export function LifeKLine() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#dcd3c1]/70">
         <div>
           <div className="flex items-center gap-2">
-            <span className="fusang-seal text-xs">扶桑核心</span>
+            <span className="xuanji-seal text-xs">玄机核心</span>
             <h2 className="text-2xl sm:text-3xl font-bold font-serif-sc text-[#1e2f34]">
               百年大运 · 人生K线图
             </h2>

@@ -461,13 +461,13 @@ export function MBTIAnalysisView() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-[#dcd3c1]/70">
           <div>
             <div className="flex items-center gap-2">
-              <span className="fusang-seal text-xs">AI 宗师批注</span>
+              <span className="xuanji-seal text-xs">AI 宗师批注</span>
               <h3 className="font-serif-sc font-bold text-lg text-[#1e2f34]">
-                扶桑大模型 ·【紫微 × {activeMBTI}】全息千字定制详批
+                玄机大模型 ·【紫微 × {activeMBTI}】全息千字定制详批
               </h3>
             </div>
             <p className="text-xs text-[#789087] font-serif mt-0.5">
-              基于当前模型厂商 ({provider.toUpperCase()})，深度串联十二宫星曜、四化转合与荣格认知心理学
+              深度串联十二宫星曜、四化转合与荣格认知心理学，由玄机智能云端专线推演
             </p>
           </div>
 

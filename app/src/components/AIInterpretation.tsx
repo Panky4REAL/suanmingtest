@@ -177,10 +177,6 @@ export function AIInterpretation() {
 
   const handleInterpret = useCallback(async () => {
     if (!chart || !birthInfo) return
-    if (!currentSettings.apiKey) {
-      setError('请先在设置中配置 API Key')
-      return
-    }
 
     // 重置状态
     loadingRef.current = true

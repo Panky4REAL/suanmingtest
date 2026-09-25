@@ -78,7 +78,7 @@ export function TaskRewardModal({ onClose, onNavigateTab }: TaskRewardModalProps
   // 复制结缘链接
   const handleCopyInvite = () => {
     const url = window.location.origin
-    navigator.clipboard.writeText(`来扶桑体验 AI 命运可视化与人生K线：${url}`)
+    navigator.clipboard.writeText(`来玄机体验 AI 命运可视化与人生K线：${url}`)
     setCopiedLink(true)
     addGongde(30, '分享结缘链接引荐同道')
     setTimeout(() => setCopiedLink(false), 2500)
@@ -354,7 +354,7 @@ export function TaskRewardModal({ onClose, onNavigateTab }: TaskRewardModalProps
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-serif-sc font-bold text-sm text-[#8A5B21]">
-                    扶桑天师 VIP 30 天卡
+                    玄机天师 VIP 30 天卡
                   </span>
                   <span className="font-mono text-xs font-black text-[#8A5B21]">
                     300 功德
@@ -365,7 +365,7 @@ export function TaskRewardModal({ onClose, onNavigateTab }: TaskRewardModalProps
                 </p>
               </div>
               <button
-                onClick={() => handleRedeemPass('master', 300, 30, '扶桑天师 30天卡')}
+                onClick={() => handleRedeemPass('master', 300, 30, '玄机天师 30天卡')}
                 className="w-full py-1.5 rounded-xl bg-[#c58a28] text-white text-xs font-serif font-bold hover:opacity-90 shadow-2xs"
               >
                 兑换开通
