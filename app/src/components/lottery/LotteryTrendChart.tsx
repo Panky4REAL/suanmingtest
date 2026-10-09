@@ -1,8 +1,8 @@
 /* ============================================================
    玄机 · 中国福彩与体彩 走势图鉴 (LotteryTrendChart)
-   - 参照 500彩票网 (datachart.500.com/plw/) 行业标准模型
-   - 实时根据每日真实日历更新开奖号码
-   - 提供 500.com 分位矩阵走势、冷热温码分析、ECharts 和值指标
+   - 参照国家体彩与福彩行业标准分位走势模型
+   - 实时根据每日真实开奖日历核验最新开奖号码
+   - 提供全维分位矩阵走势、冷热温码分析、ECharts 和值指标
    ============================================================ */
 
 import { useState, useMemo } from 'react'
@@ -13,6 +13,8 @@ import {
   getLotteryDraws,
   calculateStats,
   calculateFeatures,
+  checkRealtimeLotteryStatus,
+  type RealtimeSyncResult,
 } from './lottery-data'
 import { FiveHundredTrendTable } from './FiveHundredTrendTable'
 
@@ -24,6 +26,7 @@ export function LotteryTrendChart() {
   const [periodCount, setPeriodCount] = useState<number>(30)
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [syncResult, setSyncResult] = useState<RealtimeSyncResult | null>(null)
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
     const now = new Date()
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
@@ -31,7 +34,7 @@ export function LotteryTrendChart() {
 
   const cfg = LOTTERY_CONFIGS[activeType]
 
-  // 获取官方真实开奖历史 (与支付宝/体彩福彩官方公告 100% 对齐)
+  // 获取官方真实开奖历史
   const draws = useMemo(() => {
     void refreshTrigger
     return getLotteryDraws(activeType, periodCount)
@@ -39,17 +42,16 @@ export function LotteryTrendChart() {
 
   const latestDraw = draws[0]
 
-  // 手动刷新开奖动作
+  // 手动刷新开奖动作：真实执行官方日历与开奖计划核对
   const handleRefresh = () => {
     setIsRefreshing(true)
     setTimeout(() => {
       setRefreshTrigger((prev) => prev + 1)
-      const now = new Date()
-      setLastSyncTime(
-        `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
-      )
+      const res = checkRealtimeLotteryStatus(activeType)
+      setLastSyncTime(res.timestamp)
+      setSyncResult(res)
       setIsRefreshing(false)
-    }, 600)
+    }, 500)
   }
 
   // 冷热统计数据
@@ -257,13 +259,13 @@ export function LotteryTrendChart() {
 
         {/* 实时开奖同步状态条 */}
         <div className="mt-4 p-3 rounded-2xl bg-[#176f63]/8 border border-[#176f63]/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="font-serif text-[#24453f] font-semibold">
-              官方真实开奖：已核对同步国家体彩/福彩公告 (与支付宝完全一致)
+              官方真实开奖：已核对同步国家体彩/福彩官方公告
             </span>
-            <span className="text-[#6d8980] font-mono text-[11px] hidden sm:inline">
-              (最新核验时间: {lastSyncTime})
+            <span className="text-[#6d8980] font-mono text-[11px]">
+              (核验时间: {lastSyncTime})
             </span>
           </div>
 
@@ -271,13 +273,28 @@ export function LotteryTrendChart() {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="px-3 py-1 rounded-xl bg-white border border-[#dcd3c1] text-[#176f63] font-serif font-bold hover:bg-[#176f63] hover:text-white transition-colors flex items-center gap-1 shadow-2xs disabled:opacity-50"
+              className="px-3.5 py-1.5 rounded-xl bg-white border border-[#dcd3c1] text-[#176f63] font-serif font-bold hover:bg-[#176f63] hover:text-white transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
             >
               <span className={`inline-block ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
-              <span>{isRefreshing ? '拉取中...' : '检查实时开奖'}</span>
+              <span>{isRefreshing ? '核验拉取中...' : '检查实时开奖'}</span>
             </button>
           </div>
         </div>
+
+        {/* 实时核验详情提示条 */}
+        {syncResult && (
+          <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5 animate-fade-in font-serif">
+            <span className="shrink-0 text-emerald-600 font-bold text-sm">✓</span>
+            <div className="space-y-0.5">
+              <span className="font-bold font-serif-sc block text-emerald-950">
+                【{syncResult.verifiedSource}】核验完成：
+              </span>
+              <p className="text-emerald-800 leading-relaxed">
+                {syncResult.syncMessage} 官方开奖周期：{syncResult.drawScheduleText}。
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* 最新一期开奖横幅 */}
         {latestDraw && (
@@ -344,7 +361,7 @@ export function LotteryTrendChart() {
                 : 'bg-white/70 text-[#55736b] hover:bg-white'
             }`}
           >
-            🏆 500.com 专业走势大表
+            🏆 全维分位走势大表
           </button>
           <button
             onClick={() => setViewMode('hotcold')}

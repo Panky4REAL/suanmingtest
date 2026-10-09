@@ -1,7 +1,7 @@
 /* ============================================================
    玄机 · 福彩体彩走势图鉴与双轨选号主视图 (LotteryView)
    - 包含三大核心板块：
-     1. 📊 号码走势图鉴 (500彩票网标准分位大表 + 冷热遗漏)
+     1. 📊 号码走势图鉴 (全维分位走势大表 + 冷热遗漏)
      2. 🧮 算法规律推荐 (和值均值回归、冷热温码、邻重号、012路余数)
      3. 🔮 周易互动起卦 (六爻掷铜钱、梅花易数报数、紫微摇签)
    ============================================================ */
@@ -23,7 +23,7 @@ export function LotteryView() {
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#176f63]/25 bg-[#176f63]/5 text-[#176f63] text-xs font-serif mb-3">
           <span>❖ 玄机 · 彩数易理</span>
           <span className="opacity-40">|</span>
-          <span>500大数据走势 × 科学量化算法 × 周易互动起卦</span>
+          <span>全维分位走势 × 科学量化算法 × 周易互动起卦</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold font-serif-sc text-[#1e2f34] tracking-tight">
           天数机变 · 走势图鉴与定数推演
@@ -47,7 +47,7 @@ export function LotteryView() {
             `}
           >
             <span>📊</span>
-            <span>500走势图鉴</span>
+            <span>分位走势大表</span>
           </button>
 
           <button

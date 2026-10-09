@@ -221,6 +221,145 @@ body {
   animation: float-slow 4s ease-in-out infinite;
 }
 
+/* ============================================================
+   周易与紫微起卦高保真物理拟真动画 (3D Transforms & Keyframes)
+   ============================================================ */
+
+/* 铜钱凌空翻转1号轨迹 (偏左抛物线+X/Y三维高速多周翻转+软布微弹) */
+@keyframes coin-toss-arc-1 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+  }
+  28% {
+    transform: translate3d(-18px, -115px, 60px) scale(1.3) rotateX(720deg) rotateY(360deg) rotateZ(-25deg);
+    filter: drop-shadow(0 32px 24px rgba(0, 0, 0, 0.2));
+  }
+  62% {
+    transform: translate3d(-8px, -45px, 30px) scale(1.15) rotateX(1260deg) rotateY(720deg) rotateZ(-12deg);
+    filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.3));
+  }
+  84% {
+    transform: translate3d(0, 4px, 0) scale(0.97) rotateX(1620deg) rotateY(900deg) rotateZ(0deg);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+  }
+  92% {
+    transform: translate3d(0, -6px, 10px) scale(1.02) rotateX(1800deg) rotateY(1080deg) rotateZ(0deg);
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.5));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(1800deg) rotateY(1080deg) rotateZ(0deg);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  }
+}
+
+/* 铜钱凌空翻转2号轨迹 (居中高抛弧线+强垂直纵深+软布微弹) */
+@keyframes coin-toss-arc-2 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+  }
+  30% {
+    transform: translate3d(0, -135px, 80px) scale(1.35) rotateX(900deg) rotateY(540deg) rotateZ(20deg);
+    filter: drop-shadow(0 38px 28px rgba(0, 0, 0, 0.18));
+  }
+  65% {
+    transform: translate3d(0, -50px, 35px) scale(1.12) rotateX(1440deg) rotateY(900deg) rotateZ(8deg);
+    filter: drop-shadow(0 20px 16px rgba(0, 0, 0, 0.3));
+  }
+  85% {
+    transform: translate3d(0, 5px, 0) scale(0.96) rotateX(1980deg) rotateY(1260deg) rotateZ(0deg);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.75));
+  }
+  93% {
+    transform: translate3d(0, -7px, 12px) scale(1.02) rotateX(2160deg) rotateY(1440deg) rotateZ(0deg);
+    filter: drop-shadow(0 6px 9px rgba(0, 0, 0, 0.5));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(2160deg) rotateY(1440deg) rotateZ(0deg);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  }
+}
+
+/* 铜钱凌空翻转3号轨迹 (偏右抛物线+侧向偏转自旋+软布微弹) */
+@keyframes coin-toss-arc-3 {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+  }
+  26% {
+    transform: translate3d(20px, -110px, 60px) scale(1.28) rotateX(540deg) rotateY(720deg) rotateZ(32deg);
+    filter: drop-shadow(0 30px 22px rgba(0, 0, 0, 0.22));
+  }
+  60% {
+    transform: translate3d(10px, -45px, 30px) scale(1.12) rotateX(1080deg) rotateY(1080deg) rotateZ(14deg);
+    filter: drop-shadow(0 16px 14px rgba(0, 0, 0, 0.32));
+  }
+  82% {
+    transform: translate3d(0, 4px, 0) scale(0.97) rotateX(1440deg) rotateY(1260deg) rotateZ(0deg);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.7));
+  }
+  91% {
+    transform: translate3d(0, -5px, 9px) scale(1.02) rotateX(1440deg) rotateY(1440deg) rotateZ(0deg);
+    filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.5));
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotateX(1440deg) rotateY(1440deg) rotateZ(0deg);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+  }
+}
+
+/* 锦缎卦垫接触吸能柔和波纹 */
+@keyframes cloth-soft-ripple {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.008); filter: brightness(1.06); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* 紫竹签筒沉实左右摇摆震荡 */
+@keyframes canister-wood-shake {
+  0% { transform: rotate(0deg) translateY(0); }
+  15% { transform: rotate(-14deg) translateY(-4px); }
+  35% { transform: rotate(12deg) translateY(-2px); }
+  55% { transform: rotate(-10deg) translateY(-4px); }
+  75% { transform: rotate(8deg) translateY(-1px); }
+  90% { transform: rotate(-4deg) translateY(0); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+
+/* 筒内竹签错落跳跃动画 */
+@keyframes slip-jitter-1 {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-16px); }
+  70% { transform: translateY(-6px); }
+}
+
+@keyframes slip-jitter-2 {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-22px); }
+  65% { transform: translateY(-10px); }
+}
+
+@keyframes slip-jitter-3 {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-14px); }
+  75% { transform: translateY(-4px); }
+}
+
+/* 灵签破鞘腾空拔起飞跃 */
+@keyframes slip-fly-out {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  50% { transform: translateY(-140px) scale(1.2); opacity: 1; }
+  75% { transform: translateY(-118px) scale(1.14); opacity: 1; }
+  100% { transform: translateY(-122px) scale(1.15); opacity: 1; }
+}
+
+/* 灵签金光脉冲 */
+@keyframes slip-glow-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.4), 0 0 30px rgba(197, 138, 40, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 0 0 50px rgba(197, 138, 40, 0.5); }
+}
+
 /* 按钮基础样式 */
 .btn {
   position: relative;

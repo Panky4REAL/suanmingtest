@@ -1,9 +1,9 @@
 /* ============================================================
-   玄机 · 500彩票网专业走势模型 (FiveHundredTrendTable)
-   - 严格参照 500彩票网 (datachart.500.com/plw/) 行业标准模型
+   玄机 · 全维数理分位走势大表 (FiveHundredTrendTable)
+   - 参照国家体彩/福彩中心行业标准分位走势模型
    - 包含：分位选号矩阵、单元格历史遗漏值、SVG 走势折线连接、
           出现总次数/平均遗漏/最大遗漏/最大连出 四行统计、
-          底部 500.com 交互式模拟选号台
+          底部交互式模拟选号台
    ============================================================ */
 
 import { useState, useMemo } from 'react'
@@ -12,7 +12,7 @@ import {
   LOTTERY_CONFIGS,
   buildDigitsMatrix,
   buildLottoMatrix,
-  calculate500Summary,
+  calculateTrendSummary,
   calculateFeatures,
 } from './lottery-data'
 
@@ -67,14 +67,14 @@ export function FiveHundredTrendTable({
     return buildLottoMatrix(chronologicalDraws, cfg.blueRange, true)
   }, [cfg, chronologicalDraws])
 
-  // 500.com 四行统计计算
-  // 分位统计：[posIndex][digit 0..9] -> FiveHundredSummary
+  // 专业四行统计计算
+  // 分位统计：[posIndex][digit 0..9] -> TrendSummary
   const digitSummaries = useMemo(() => {
     if (!cfg.isPositionDigits) return null
     return Array.from({ length: cfg.redCount }, (_, pos) => {
       return Array.from({ length: 10 }, (_, d) => {
         const hitFlags = chronologicalDraws.map((dr) => dr.reds[pos] === d)
-        return calculate500Summary(hitFlags)
+        return calculateTrendSummary(hitFlags)
       })
     })
   }, [cfg, chronologicalDraws])
@@ -86,7 +86,7 @@ export function FiveHundredTrendTable({
     return Array.from({ length: max - min + 1 }, (_, idx) => {
       const num = min + idx
       const hitFlags = chronologicalDraws.map((dr) => dr.reds.includes(num))
-      return calculate500Summary(hitFlags)
+      return calculateTrendSummary(hitFlags)
     })
   }, [cfg, chronologicalDraws])
 
@@ -96,7 +96,7 @@ export function FiveHundredTrendTable({
     return Array.from({ length: max - min + 1 }, (_, idx) => {
       const num = min + idx
       const hitFlags = chronologicalDraws.map((dr) => dr.blues.includes(num))
-      return calculate500Summary(hitFlags)
+      return calculateTrendSummary(hitFlags)
     })
   }, [cfg, chronologicalDraws])
 
@@ -135,9 +135,9 @@ export function FiveHundredTrendTable({
     let str = ''
     if (cfg.isPositionDigits) {
       const nums = Array.from({ length: cfg.redCount }, (_, i) => simulatedPicks[i] ?? '*')
-      str = `【玄机 500走势模拟选号 · ${cfg.name}】${nums.join(' ')}`
+      str = `【玄机分位走势模拟选号 · ${cfg.name}】${nums.join(' ')}`
     } else {
-      str = `【玄机 500走势模拟选号 · ${cfg.name}】红球: ${simulatedLottoReds.map(formatBall).join(' ')}`
+      str = `【玄机分位走势模拟选号 · ${cfg.name}】红球: ${simulatedLottoReds.map(formatBall).join(' ')}`
       if (simulatedLottoBlues.length > 0) {
         str += ` + 蓝球: ${simulatedLottoBlues.map(formatBall).join(' ')}`
       }
@@ -156,12 +156,12 @@ export function FiveHundredTrendTable({
 
   return (
     <div className="space-y-4">
-      {/* 500.com 经典工具栏控制条 */}
+      {/* 全维走势工具栏控制条 */}
       <div className="bg-[#fbf7ee] p-3 sm:p-4 rounded-2xl border border-[#dcd3c1] flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
         <div className="flex items-center gap-2">
           <span className="font-serif-sc font-bold text-[#176f63] flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#176f63]" />
-            500.com 行业标准走势模型
+            全维数理分位走势大表
           </span>
           <span className="text-[#879397] font-mono text-[11px] hidden md:inline">
             | 动态全位遗漏矩阵与折线连线
@@ -222,7 +222,7 @@ export function FiveHundredTrendTable({
         </div>
       </div>
 
-      {/* 500.com 标准走势大表 */}
+      {/* 全维分位标准走势大表 */}
       <div className="bg-white rounded-2xl border border-[#dcd3c1] shadow-xs overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar relative">
           <table className="w-full text-center text-[11px] font-mono border-collapse select-none">
@@ -487,7 +487,7 @@ export function FiveHundredTrendTable({
               })}
             </tbody>
 
-            {/* 500.com 经典四行统计表底 */}
+            {/* 专业四行统计表底 */}
             {showSummary && (
               <tfoot className="border-t-2 border-[#176f63] font-serif-sc font-bold text-[10px]">
                 {/* 1. 出现总次数 */}
