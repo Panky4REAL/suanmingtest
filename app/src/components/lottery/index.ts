@@ -1,5 +1,6 @@
 export { LotteryView } from './LotteryView'
 export { LotteryTrendChart } from './LotteryTrendChart'
 export { MetaphysicalPicker } from './MetaphysicalPicker'
+export { FiveHundredTrendTable } from './FiveHundredTrendTable'
 export * from './lottery-data'
 export * from './metaphysical-engine'
