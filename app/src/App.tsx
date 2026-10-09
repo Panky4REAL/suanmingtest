@@ -1,10 +1,11 @@
 /* ============================================================
-   扶桑 · 人生K线 (Fusang LifeKLine) - 主应用架构
-   对标 lifekline.ai：
-   - 东方古典羊皮纸水墨风 (Parchment & Jade-Gold Aesthetic)
-   - SaaS 级左侧折叠边栏 (Sidebar) + 顶部状态 Bar
-   - 包含：人生K线、命运分身原型、每日运势、分身对话、示例报告、全盘详解
-   - “功德+1” 互动彩蛋与微挂件
+   玄机 · 人生K线 (XuanJi LifeKLine) - 主应用架构
+   精简整合版 (5大核心心智导航)：
+   1. 📈 人生K线 (含百年K线走势、正统十二宫盘切换、AI大运详批、海报分享)
+   2. 🎭 原型×MBTI (含命运分身160种原型、MBTI全息分析、分身AI实时对话)
+   3. 📅 时运指南 (含每日流日宜忌、当年大运流年四化、偏财彩数与周易起卦)
+   4. 👥 关系合盘 (双人命盘契合度分析与相处秘笈)
+   5. 🗂️ 档案中心 (多生辰档案库、历史测算快照、功德任务、Pass会员特权)
    ============================================================ */
 
 import { useState } from 'react'
@@ -15,31 +16,18 @@ import { SettingsPanel } from '@/components/SettingsPanel'
 import { YearlyFortune, DailyFortune } from '@/components/fortune'
 import { LifeKLine } from '@/components/kline'
 import { DestinyAvatar } from '@/components/avatar'
-import { SampleReports, type SampleCase } from '@/components/sample'
 import { DestinyChat } from '@/components/chat'
 import { MatchAnalysis } from '@/components/match'
 import { ShareCard } from '@/components/share'
 import { MBTIAnalysisView } from '@/components/mbti'
-import { ProfileView, TaskRewardModal, SubscriptionModal, HistoryView } from '@/components/profile'
+import { ProfileView, TaskRewardModal, SubscriptionModal } from '@/components/profile'
 import { AuthModal } from '@/components/auth'
 import { CheckoutModal } from '@/components/payment'
 import { LotteryView } from '@/components/lottery'
 import { useChartStore, useProfileStore } from '@/stores'
+import { generateChart, type BirthInfo } from '@/lib/astro'
 
-type TabType =
-  | 'kline'
-  | 'avatar'
-  | 'mbti'
-  | 'fortune'
-  | 'lottery'
-  | 'chat'
-  | 'history'
-  | 'profile'
-  | 'sample'
-  | 'chart'
-  | 'yearly'
-  | 'match'
-  | 'share'
+export type TabType = 'kline' | 'avatar' | 'fortune' | 'match' | 'profile'
 
 const NAV_ITEMS: Array<{
   key: TabType
@@ -48,37 +36,80 @@ const NAV_ITEMS: Array<{
   icon: string
   badge?: string
 }> = [
-  { key: 'kline', label: '人生K线', sublabel: 'Life K-Line', icon: '📈' },
-  { key: 'avatar', label: '命运分身', sublabel: 'Avatar Aura', icon: '🎭', badge: '160种' },
-  { key: 'mbti', label: 'MBTI×命理', sublabel: 'Mind & Stars', icon: '🧠', badge: '全息' },
-  { key: 'fortune', label: '每日运势', sublabel: 'Daily Fortune', icon: '📅', badge: '流日' },
-  { key: 'lottery', label: '玄机彩数', sublabel: 'Lottery & Oracle', icon: '🎱', badge: '走势' },
-  { key: 'chat', label: '分身对话', sublabel: 'Report Chat', icon: '💬', badge: 'AI' },
-  { key: 'history', label: '历史测算', sublabel: 'History Archive', icon: '📜' },
-  { key: 'profile', label: '档案中心', sublabel: 'Birth Profiles', icon: '🗂️' },
-  { key: 'sample', label: '示例报告', sublabel: 'Sample Reports', icon: '🏛️', badge: '精选' },
-  { key: 'chart', label: '十二宫盘', sublabel: 'Chart View', icon: '⛩️' },
-  { key: 'yearly', label: '年度大运', sublabel: 'Yearly Trend', icon: '🌀' },
-  { key: 'match', label: '双人合盘', sublabel: 'Synastry', icon: '👥' },
-  { key: 'share', label: '分享卡片', sublabel: 'Share Card', icon: '🎨' },
+  { key: 'kline', label: '人生K线', sublabel: 'Life K-Line & Chart', icon: '📈', badge: '全景' },
+  { key: 'avatar', label: '原型×MBTI', sublabel: 'Mind & Archetype', icon: '🎭', badge: '全息' },
+  { key: 'fortune', label: '时运指南', sublabel: 'Daily & Yearly', icon: '📅', badge: '时运' },
+  { key: 'match', label: '关系合盘', sublabel: 'Synastry', icon: '👥' },
+  { key: 'profile', label: '档案中心', sublabel: 'Profiles & History', icon: '🗂️' },
 ]
 
 export default function App() {
-  const { chart, birthInfo, clear } = useChartStore()
+  const { chart, birthInfo, clear, setBirthInfo, setChart } = useChartStore()
   const { userName, gongde, isLoggedIn, membershipTier } = useProfileStore()
 
+  // 核心一级导航
   const [activeTab, setActiveTab] = useState<TabType>('kline')
+
+  // 子功能状态整合
+  const [klineViewMode, setKlineViewMode] = useState<'kline' | 'chart'>('kline')
+  const [avatarSubTab, setAvatarSubTab] = useState<'persona' | 'mbti' | 'chat'>('persona')
+  const [fortuneSubTab, setFortuneSubTab] = useState<'daily' | 'yearly' | 'lottery'>('daily')
+
+  // 全局弹窗
   const [showSettings, setShowSettings] = useState(false)
   const [showFAQ, setShowFAQ] = useState(false)
   const [showTasks, setShowTasks] = useState(false)
   const [showSubscription, setShowSubscription] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const handleSelectCase = (_c: SampleCase) => {
+  // 免输入一键体验示例案例
+  const handleQuickLoadSample = () => {
+    const sampleBirth: BirthInfo = { year: 1992, month: 8, day: 15, hour: 12, gender: 'male' }
+    const c = generateChart(sampleBirth)
+    setBirthInfo(sampleBirth)
+    setChart(c)
     setActiveTab('kline')
+    setKlineViewMode('kline')
+  }
+
+  // 跨组件平滑跳转路由映射
+  const handleNavigateTab = (tab: string) => {
+    if (tab === 'chat') {
+      setActiveTab('avatar')
+      setAvatarSubTab('chat')
+    } else if (tab === 'mbti') {
+      setActiveTab('avatar')
+      setAvatarSubTab('mbti')
+    } else if (tab === 'avatar' || tab === 'persona') {
+      setActiveTab('avatar')
+      setAvatarSubTab('persona')
+    } else if (tab === 'yearly') {
+      setActiveTab('fortune')
+      setFortuneSubTab('yearly')
+    } else if (tab === 'daily' || tab === 'fortune') {
+      setActiveTab('fortune')
+      setFortuneSubTab('daily')
+    } else if (tab === 'lottery') {
+      setActiveTab('fortune')
+      setFortuneSubTab('lottery')
+    } else if (tab === 'chart') {
+      setActiveTab('kline')
+      setKlineViewMode('chart')
+    } else if (tab === 'kline') {
+      setActiveTab('kline')
+      setKlineViewMode('kline')
+    } else if (tab === 'share') {
+      setActiveTab('kline')
+      setShowShareModal(true)
+    } else if (tab === 'history' || tab === 'profile') {
+      setActiveTab('profile')
+    } else if (tab === 'match') {
+      setActiveTab('match')
+    }
   }
 
   return (
@@ -89,7 +120,7 @@ export default function App() {
       <div className="fixed top-1/3 -right-24 w-80 h-80 ink-wash-circle bg-[#c58a28]/10 z-0" />
 
       {/* ============================================================
-         左侧边栏 (Desktop Sidebar)
+         左侧边栏 (Desktop Sidebar) - 5大精简导航
          ============================================================ */}
       <aside
         className={`
@@ -116,7 +147,6 @@ export default function App() {
           </button>
 
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-2.5'}`}>
-            {/* Logo 徽章 */}
             <div className="w-10 h-10 rounded-2xl bg-[#176f63] border border-[#176f63]/25 flex items-center justify-center shadow-xs shrink-0 text-white">
               <span className="font-serif-sc font-black text-xl">玄</span>
             </div>
@@ -127,15 +157,15 @@ export default function App() {
                   玄机 · 人生K线
                 </span>
                 <span className="text-[10px] text-[#6d8980] tracking-wider uppercase font-serif truncate">
-                  XuanJi Destiny · 命理全息
+                  XuanJi Destiny · 全息命理
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* 导航菜单列表 */}
-        <nav className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+        {/* 5 大精简导航菜单 */}
+        <nav className="flex-1 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
           {NAV_ITEMS.map((item) => {
             const isActive = activeTab === item.key
             return (
@@ -143,7 +173,7 @@ export default function App() {
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
                 className={`
-                  w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all duration-150 relative
+                  w-full flex items-center gap-2.5 px-3 py-3 rounded-xl text-left transition-all duration-150 relative
                   ${isActive
                     ? 'bg-[#176f63] text-white shadow-sm font-medium'
                     : 'text-[#55736b] hover:bg-white/60 hover:text-[#24453f]'
@@ -152,14 +182,19 @@ export default function App() {
                 `}
                 title={sidebarCollapsed ? item.label : undefined}
               >
-                <span className="text-base shrink-0">{item.icon}</span>
+                <span className="text-lg shrink-0">{item.icon}</span>
                 {!sidebarCollapsed && (
                   <div className="flex-1 flex items-center justify-between min-w-0">
-                    <span className="text-[13px] font-serif-sc tracking-wide truncate">
-                      {item.label}
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[13px] font-serif-sc tracking-wide truncate font-bold">
+                        {item.label}
+                      </span>
+                      <span className={`text-[10px] font-mono truncate ${isActive ? 'text-white/80' : 'text-[#879397]'}`}>
+                        {item.sublabel}
+                      </span>
+                    </div>
                     {item.badge && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                         isActive ? 'bg-white/25 text-white' : 'bg-[#c58a28]/15 text-[#8A5B21]'
                       }`}>
                         {item.badge}
@@ -172,7 +207,7 @@ export default function App() {
           })}
         </nav>
 
-        {/* 底部功能区：对标 lifekline.ai 完整挂件 */}
+        {/* 底部功能区：功德任务与个人中心胶囊 */}
         <div className="p-3 border-t border-[#176f63]/15 space-y-2">
           {/* 1. Complete tasks for rewards 金卡 */}
           {!sidebarCollapsed ? (
@@ -192,11 +227,11 @@ export default function App() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold leading-tight font-serif-sc truncate">Complete tasks for rewards</p>
+                    <p className="text-xs font-bold leading-tight font-serif-sc truncate">功德任务中心</p>
                     <span className="font-mono text-xs font-black text-[#8A5B21] ml-1">{gongde}</span>
                   </div>
                   <p className="mt-0.5 text-[9px] leading-snug opacity-80 truncate">
-                    Earn Gongde and avatar subscription rewards
+                    敲木鱼·签到赚功德换会员
                   </p>
                 </div>
               </div>
@@ -211,7 +246,7 @@ export default function App() {
             </button>
           )}
 
-          {/* 2. 用户卡片与 Pass 胶囊 (对标 lifekline.ai /profile pill) */}
+          {/* 2. 用户卡片与 Pass 胶囊 */}
           <div className="flex items-center gap-1.5 pt-0.5">
             <button
               onClick={() => setActiveTab('profile')}
@@ -223,12 +258,12 @@ export default function App() {
               title="个人中心 · 档案与设置"
             >
               <div className="h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-white text-xs bg-[#176f63] font-serif-sc font-bold shadow-2xs">
-                {userName.slice(0, 1) || '灵'}
+                {userName.slice(0, 1) || '玄'}
               </div>
               {!sidebarCollapsed && (
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-medium truncate text-[#24453f] leading-tight">{userName}</p>
-                  <p className="text-[10px] truncate text-[#789087] leading-tight">Profile · Settings</p>
+                  <p className="text-[10px] truncate text-[#789087] leading-tight">档案中心 · 设置</p>
                 </div>
               )}
             </button>
@@ -352,14 +387,18 @@ export default function App() {
               </svg>
             </button>
 
-            {/* 当前页面标题与标语 */}
+            {/* 当前页面标题与动态子模块标语 */}
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-serif-sc font-bold text-base sm:text-lg text-[#1e2f34]">
-                  {NAV_ITEMS.find((n) => n.key === activeTab)?.label}
+                  {activeTab === 'kline' && (klineViewMode === 'kline' ? '人生K线 · 大运走势' : '正统紫微 · 十二宫全盘')}
+                  {activeTab === 'avatar' && (avatarSubTab === 'persona' ? '命运分身 · 人格原型' : avatarSubTab === 'mbti' ? 'MBTI×命理 · 双维全息' : '分身对话 · 智慧解惑')}
+                  {activeTab === 'fortune' && (fortuneSubTab === 'daily' ? '每日流日 · 吉凶宜忌' : fortuneSubTab === 'yearly' ? '年度大运 · 四化吉凶' : '玄机彩数 · 走势与灵机')}
+                  {activeTab === 'match' && '关系合盘 · 深度契合'}
+                  {activeTab === 'profile' && '档案中心 · 多盘与资产'}
                 </span>
                 <span className="text-[10px] text-[#879397] font-serif hidden sm:inline-block">
-                  · 玄机 AI 命运全息可视化
+                  · 玄机 AI 全息命理
                 </span>
               </div>
             </div>
@@ -373,17 +412,17 @@ export default function App() {
                 <span className="font-mono">{birthInfo.year}年{birthInfo.month}月{birthInfo.day}日</span>
                 <button
                   onClick={clear}
-                  className="ml-1 text-[11px] text-[#176f63] font-semibold hover:underline"
+                  className="ml-1 text-[11px] text-[#176f63] font-semibold hover:underline cursor-pointer"
                 >
                   重新排盘
                 </button>
               </div>
             ) : (
               <button
-                onClick={() => setActiveTab('sample')}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif border border-[#c58a28]/40 bg-[#c58a28]/10 text-[#8A5B21] hover:bg-[#c58a28]/20 transition-colors"
+                onClick={handleQuickLoadSample}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif border border-[#c58a28]/40 bg-[#c58a28]/10 text-[#8A5B21] hover:bg-[#c58a28]/20 transition-colors cursor-pointer"
               >
-                <span>✦ 浏览经典案例库</span>
+                <span>✦ 体验经典示例盘</span>
               </button>
             )}
 
@@ -391,7 +430,7 @@ export default function App() {
             {!isLoggedIn ? (
               <button
                 onClick={() => setShowAuth(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif-sc font-bold border border-[#176f63] bg-[#176f63] text-white hover:bg-[#1d8274] transition-all shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif-sc font-bold border border-[#176f63] bg-[#176f63] text-white hover:bg-[#1d8274] transition-all shadow-xs cursor-pointer"
               >
                 <span>🔑 登录 / 注册</span>
                 <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-white font-mono">
@@ -401,7 +440,7 @@ export default function App() {
             ) : (
               <button
                 onClick={() => setActiveTab('profile')}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-serif-sc bg-white/90 border border-[#dcd3c1] hover:border-[#176f63] transition-colors"
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-serif-sc bg-white/90 border border-[#dcd3c1] hover:border-[#176f63] transition-colors cursor-pointer"
                 title="个人中心"
               >
                 <span className="w-4 h-4 rounded-full bg-[#176f63] text-white text-[10px] flex items-center justify-center font-bold">
@@ -414,7 +453,7 @@ export default function App() {
             {/* 会员开通 / 升级按钮 */}
             <button
               onClick={() => setShowCheckout(true)}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-serif-sc font-bold text-white shadow-2xs transition-opacity hover:opacity-95"
+              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-serif-sc font-bold text-white shadow-2xs transition-opacity hover:opacity-95 cursor-pointer"
               style={{ background: 'linear-gradient(135deg, #176f63, #c58a28)' }}
               title="开通 Pass 订阅特权"
             >
@@ -423,7 +462,7 @@ export default function App() {
 
             <button
               onClick={() => setShowTasks(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif border border-[#c58a28]/40 bg-[#c58a28]/10 text-[#8A5B21] hover:bg-[#c58a28]/20 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-serif border border-[#c58a28]/40 bg-[#c58a28]/10 text-[#8A5B21] hover:bg-[#c58a28]/20 transition-colors cursor-pointer"
               title="功德中心"
             >
               <span>🎁</span>
@@ -432,7 +471,7 @@ export default function App() {
 
             <button
               onClick={() => setShowFAQ(true)}
-              className="px-2.5 py-1 rounded-lg text-xs font-serif text-[#52666a] hover:text-[#176f63] hover:bg-white/60 transition-colors"
+              className="px-2.5 py-1 rounded-lg text-xs font-serif text-[#52666a] hover:text-[#176f63] hover:bg-white/60 transition-colors cursor-pointer"
               title="帮助与说明"
             >
               FAQ
@@ -440,7 +479,7 @@ export default function App() {
 
             <button
               onClick={() => setShowSettings(true)}
-              className="w-8 h-8 rounded-full border border-[#dcd3c1] bg-white flex items-center justify-center text-xs text-[#52666a] hover:text-[#176f63] hover:border-[#176f63] transition-colors"
+              className="w-8 h-8 rounded-full border border-[#dcd3c1] bg-white flex items-center justify-center text-xs text-[#52666a] hover:text-[#176f63] hover:border-[#176f63] transition-colors cursor-pointer"
               title="偏好设置"
             >
               ⚙️
@@ -450,15 +489,55 @@ export default function App() {
 
         {/* 主内容区域 */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 md:pb-8 max-w-7xl mx-auto w-full">
-          {/* 1. 人生 K 线 */}
+          {/* ============================================================
+             1. 人生 K 线 (整合：百年K线 + 十二宫盘切换 + 海报分享入口)
+             ============================================================ */}
           {activeTab === 'kline' && (
             !chart ? (
               <div className="flex flex-col items-center justify-center min-h-[65vh]">
-                <BirthForm onGoToSample={() => setActiveTab('sample')} />
+                <BirthForm onQuickLoadSample={handleQuickLoadSample} />
               </div>
             ) : (
-              <div className="space-y-8 animate-fade-in">
-                <LifeKLine />
+              <div className="space-y-6 animate-fade-in">
+                {/* 顶部视图切换：百年K线 vs 正统十二宫盘 + 分享按钮 */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/80 border border-[#dcd3c1] p-2.5 sm:p-3 rounded-2xl shadow-2xs">
+                  <div className="flex items-center gap-1.5 p-1 bg-[#f4eddf] rounded-xl border border-[#dcd3c1]/60">
+                    <button
+                      onClick={() => setKlineViewMode('kline')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-serif-sc font-bold transition-all cursor-pointer ${
+                        klineViewMode === 'kline'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34]'
+                      }`}
+                    >
+                      📈 百年K线图谱
+                    </button>
+                    <button
+                      onClick={() => setKlineViewMode('chart')}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-serif-sc font-bold transition-all cursor-pointer ${
+                        klineViewMode === 'chart'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34]'
+                      }`}
+                    >
+                      ⛩️ 正统十二宫盘
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowShareModal(true)}
+                      className="px-3.5 py-1.5 rounded-xl border border-[#c58a28]/40 bg-[#c58a28]/10 text-[#8A5B21] hover:bg-[#c58a28]/20 text-xs font-serif-sc font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <span>🎨</span>
+                      <span>生成水墨分享长图</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 内容渲染 */}
+                {klineViewMode === 'kline' ? <LifeKLine /> : <ChartDisplay />}
+
                 {/* 下方附加 AI 综合命盘批语 */}
                 <div className="pt-4 border-t border-[#dcd3c1]/70">
                   <div className="mb-4 text-center">
@@ -473,90 +552,174 @@ export default function App() {
             )
           )}
 
-          {/* 2. 命运分身与气场画像 */}
+          {/* ============================================================
+             2. 原型×MBTI (整合：命运原型 + MBTI全息分析 + 分身AI对话)
+             ============================================================ */}
           {activeTab === 'avatar' && (
             !chart ? (
               <div className="flex flex-col items-center justify-center min-h-[65vh]">
-                <BirthForm onGoToSample={() => setActiveTab('sample')} />
+                <BirthForm onQuickLoadSample={handleQuickLoadSample} />
               </div>
             ) : (
-              <DestinyAvatar />
+              <div className="space-y-6 animate-fade-in">
+                {/* 顶部三段式子导航 */}
+                <div className="flex items-center justify-center">
+                  <div className="p-1 rounded-2xl bg-white/80 border border-[#dcd3c1] shadow-2xs flex items-center gap-1.5">
+                    <button
+                      onClick={() => setAvatarSubTab('persona')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        avatarSubTab === 'persona'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
+                      }`}
+                    >
+                      <span>🎭</span>
+                      <span>命运原型</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-mono">160种</span>
+                    </button>
+
+                    <button
+                      onClick={() => setAvatarSubTab('mbti')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        avatarSubTab === 'mbti'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
+                      }`}
+                    >
+                      <span>🧠</span>
+                      <span>MBTI×全息</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#c58a28] text-white font-mono">共振</span>
+                    </button>
+
+                    <button
+                      onClick={() => setAvatarSubTab('chat')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        avatarSubTab === 'chat'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
+                      }`}
+                    >
+                      <span>💬</span>
+                      <span>分身对话</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#176f63]/20 text-[#176f63] font-mono">AI</span>
+                    </button>
+                  </div>
+                </div>
+
+                {avatarSubTab === 'persona' && <DestinyAvatar />}
+                {avatarSubTab === 'mbti' && <MBTIAnalysisView />}
+                {avatarSubTab === 'chat' && <DestinyChat />}
+              </div>
             )
           )}
 
-          {/* 3. MBTI × 命理双维全息综合分析 */}
-          {activeTab === 'mbti' && <MBTIAnalysisView />}
+          {/* ============================================================
+             3. 时运指南 (整合：每日流日 + 当年大运 + 偏财彩数)
+             ============================================================ */}
+          {activeTab === 'fortune' && (
+            !chart ? (
+              <div className="flex flex-col items-center justify-center min-h-[65vh]">
+                <BirthForm onQuickLoadSample={handleQuickLoadSample} />
+              </div>
+            ) : (
+              <div className="space-y-6 animate-fade-in">
+                {/* 顶部三段式时运子导航 */}
+                <div className="flex items-center justify-center">
+                  <div className="p-1 rounded-2xl bg-white/80 border border-[#dcd3c1] shadow-2xs flex items-center gap-1.5">
+                    <button
+                      onClick={() => setFortuneSubTab('daily')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        fortuneSubTab === 'daily'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
+                      }`}
+                    >
+                      <span>📅</span>
+                      <span>每日流日</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#176f63]/20 text-[#176f63] font-mono">今日</span>
+                    </button>
 
-          {/* 4. 每日运势 */}
-          {activeTab === 'fortune' && <DailyFortune />}
+                    <button
+                      onClick={() => setFortuneSubTab('yearly')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        fortuneSubTab === 'yearly'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
+                      }`}
+                    >
+                      <span>🌀</span>
+                      <span>年度大运</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#c58a28] text-white font-mono">流年</span>
+                    </button>
 
-          {/* 5. 玄机彩数 · 福彩体彩走势与玄学选号 */}
-          {activeTab === 'lottery' && <LotteryView />}
+                    <button
+                      onClick={() => setFortuneSubTab('lottery')}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                        fortuneSubTab === 'lottery'
+                          ? 'bg-[#176f63] text-white shadow-xs'
+                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
+                      }`}
+                    >
+                      <span>🎱</span>
+                      <span>偏财彩数</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#c58a28]/20 text-[#8A5B21] font-mono">走势</span>
+                    </button>
+                  </div>
+                </div>
 
-          {/* 6. 分身交互对话 (Report Chat) */}
-          {activeTab === 'chat' && <DestinyChat />}
-
-          {/* 6. 历史测算记录 (History) */}
-          {activeTab === 'history' && (
-            <HistoryView onSwitchToKline={() => setActiveTab('kline')} />
+                {fortuneSubTab === 'daily' && <DailyFortune />}
+                {fortuneSubTab === 'yearly' && <YearlyFortune />}
+                {fortuneSubTab === 'lottery' && <LotteryView />}
+              </div>
+            )
           )}
 
-          {/* 7. 档案中心与个人主页 (Profile & Birth Profiles) */}
+          {/* ============================================================
+             4. 关系合盘 (保持独立核心)
+             ============================================================ */}
+          {activeTab === 'match' && <MatchAnalysis />}
+
+          {/* ============================================================
+             5. 档案中心 (包含档案管理、历史测算足迹、备份与会员)
+             ============================================================ */}
           {activeTab === 'profile' && (
             <ProfileView
               onSwitchToKline={() => setActiveTab('kline')}
               onSwitchToMatch={() => setActiveTab('match')}
-              onNavigateTab={(tab) => setActiveTab(tab as TabType)}
+              onNavigateTab={handleNavigateTab}
             />
-          )}
-
-          {/* 8. 示例报告中心 (免输入查看真实案例) */}
-          {activeTab === 'sample' && (
-            <SampleReports onLoadCase={handleSelectCase} />
-          )}
-
-          {/* 9. 十二宫完整排盘 */}
-          {activeTab === 'chart' && (
-            !chart ? (
-              <div className="flex flex-col items-center justify-center min-h-[65vh]">
-                <BirthForm onGoToSample={() => setActiveTab('sample')} />
-              </div>
-            ) : (
-              <div className="space-y-8 animate-fade-in">
-                <ChartDisplay />
-                <AIInterpretation />
-              </div>
-            )
-          )}
-
-          {/* 10. 年度大运 */}
-          {activeTab === 'yearly' && (
-            !chart ? (
-              <div className="flex flex-col items-center justify-center min-h-[65vh]">
-                <BirthForm onGoToSample={() => setActiveTab('sample')} />
-              </div>
-            ) : (
-              <YearlyFortune />
-            )
-          )}
-
-          {/* 11. 关系合盘 */}
-          {activeTab === 'match' && <MatchAnalysis />}
-
-          {/* 12. 分享卡片 */}
-          {activeTab === 'share' && (
-            !chart ? (
-              <div className="flex flex-col items-center justify-center min-h-[65vh]">
-                <BirthForm onGoToSample={() => setActiveTab('sample')} />
-              </div>
-            ) : (
-              <div className="max-w-xl mx-auto">
-                <ShareCard />
-              </div>
-            )
           )}
         </main>
       </div>
+
+      {/* ============================================================
+         水墨长图分享弹窗 (替代原本独立的分享页面)
+         ============================================================ */}
+      {showShareModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowShareModal(false)}
+        >
+          <div
+            className="w-full max-w-xl max-h-[90vh] overflow-y-auto bg-white/95 backdrop-blur-md rounded-3xl p-6 border border-[#dcd3c1] shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#f4eddf] text-[#52666a] hover:bg-[#dcd3c1] flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+            >
+              ✕
+            </button>
+            <div className="mb-4">
+              <span className="fusang-seal text-xs mb-1 inline-block">海报分享</span>
+              <h3 className="text-lg font-bold font-serif-sc text-[#1e2f34]">
+                命运图鉴 · 水墨长图分享
+              </h3>
+            </div>
+            <ShareCard />
+          </div>
+        </div>
+      )}
 
       {/* ============================================================
          功德任务弹窗 (TaskRewardModal)
@@ -566,7 +729,7 @@ export default function App() {
           onClose={() => setShowTasks(false)}
           onNavigateTab={(tab) => {
             setShowTasks(false)
-            setActiveTab(tab as TabType)
+            handleNavigateTab(tab)
           }}
         />
       )}
@@ -594,8 +757,8 @@ export default function App() {
 
       {/* ============================================================
          FAQ 帮助弹窗
-         ============================================================ */
-      showFAQ && (
+         ============================================================ */}
+      {showFAQ && (
         <div
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setShowFAQ(false)}
@@ -611,7 +774,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setShowFAQ(false)}
-                className="w-7 h-7 rounded-full bg-[#f7f1e7] text-[#52666a] flex items-center justify-center text-xs hover:bg-[#dcd3c1]"
+                className="w-7 h-7 rounded-full bg-[#f7f1e7] text-[#52666a] flex items-center justify-center text-xs hover:bg-[#dcd3c1] cursor-pointer"
               >
                 ✕
               </button>
@@ -640,7 +803,7 @@ export default function App() {
 
             <button
               onClick={() => setShowFAQ(false)}
-              className="w-full btn-xuanji py-2.5 rounded-xl text-xs font-semibold"
+              className="w-full btn-xuanji py-2.5 rounded-xl text-xs font-semibold cursor-pointer"
             >
               我知道了
             </button>

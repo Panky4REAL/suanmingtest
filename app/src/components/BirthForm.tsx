@@ -33,9 +33,10 @@ const GENDER_OPTIONS = [
 
 interface BirthFormProps {
   onGoToSample?: () => void
+  onQuickLoadSample?: () => void
 }
 
-export function BirthForm({ onGoToSample }: BirthFormProps) {
+export function BirthForm({ onGoToSample, onQuickLoadSample }: BirthFormProps) {
   const { setBirthInfo, setChart } = useChartStore()
   const { profiles, addHistory, completeTask, setMBTIResult, mbtiType } = useProfileStore()
 
@@ -299,6 +300,19 @@ export function BirthForm({ onGoToSample }: BirthFormProps) {
             )}
           </Button>
         </div>
+
+        {/* 免输入一键体验示例按钮 */}
+        {onQuickLoadSample && (
+          <div className="pt-1 text-center">
+            <button
+              type="button"
+              onClick={onQuickLoadSample}
+              className="text-xs font-serif text-[#8A5B21] hover:text-[#176f63] hover:underline inline-flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <span>✦ 免输入一键体验经典示例命盘 →</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 底部提示 */}
