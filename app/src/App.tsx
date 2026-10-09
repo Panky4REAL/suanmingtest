@@ -23,6 +23,7 @@ import { MBTIAnalysisView } from '@/components/mbti'
 import { ProfileView, TaskRewardModal, SubscriptionModal, HistoryView } from '@/components/profile'
 import { AuthModal } from '@/components/auth'
 import { CheckoutModal } from '@/components/payment'
+import { LotteryView } from '@/components/lottery'
 import { useChartStore, useProfileStore } from '@/stores'
 
 type TabType =
@@ -30,6 +31,7 @@ type TabType =
   | 'avatar'
   | 'mbti'
   | 'fortune'
+  | 'lottery'
   | 'chat'
   | 'history'
   | 'profile'
@@ -50,6 +52,7 @@ const NAV_ITEMS: Array<{
   { key: 'avatar', label: '命运分身', sublabel: 'Avatar Aura', icon: '🎭', badge: '160种' },
   { key: 'mbti', label: 'MBTI×命理', sublabel: 'Mind & Stars', icon: '🧠', badge: '全息' },
   { key: 'fortune', label: '每日运势', sublabel: 'Daily Fortune', icon: '📅', badge: '流日' },
+  { key: 'lottery', label: '玄机彩数', sublabel: 'Lottery & Oracle', icon: '🎱', badge: '走势' },
   { key: 'chat', label: '分身对话', sublabel: 'Report Chat', icon: '💬', badge: 'AI' },
   { key: 'history', label: '历史测算', sublabel: 'History Archive', icon: '📜' },
   { key: 'profile', label: '档案中心', sublabel: 'Birth Profiles', icon: '🗂️' },
@@ -487,7 +490,10 @@ export default function App() {
           {/* 4. 每日运势 */}
           {activeTab === 'fortune' && <DailyFortune />}
 
-          {/* 5. 分身交互对话 (Report Chat) */}
+          {/* 5. 玄机彩数 · 福彩体彩走势与玄学选号 */}
+          {activeTab === 'lottery' && <LotteryView />}
+
+          {/* 6. 分身交互对话 (Report Chat) */}
           {activeTab === 'chat' && <DestinyChat />}
 
           {/* 6. 历史测算记录 (History) */}
