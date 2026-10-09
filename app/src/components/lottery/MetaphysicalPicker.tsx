@@ -63,8 +63,9 @@ export function MetaphysicalPicker() {
 
   const cfg = LOTTERY_CONFIGS[lotteryType]
 
-  // 格式化彩球数字
-  const formatBall = (n: number) => n.toString().padStart(2, '0')
+  // 格式化彩球数字 (3D/排列3/排列5展示单数字0-9，双色球/大乐透展示两位01-35)
+  const isDigitType = lotteryType === 'fc3d' || lotteryType === 'pl3' || lotteryType === 'pl5'
+  const formatBall = (n: number) => (isDigitType ? n.toString() : n.toString().padStart(2, '0'))
 
   // 触发起卦
   const handleStartDivination = () => {
@@ -131,7 +132,7 @@ export function MetaphysicalPicker() {
 
           {/* 目标彩种选择 */}
           <div className="flex flex-wrap gap-2">
-            {(['ssq', 'dlt', 'fc3d', 'pl3'] as LotteryType[]).map((key) => {
+            {(['ssq', 'dlt', 'fc3d', 'pl3', 'pl5'] as LotteryType[]).map((key) => {
               const item = LOTTERY_CONFIGS[key]
               const isSelected = lotteryType === key
               return (

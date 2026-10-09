@@ -184,7 +184,7 @@ export function generateMetaphysicalNumbers(
       ...HETU_MAP[pair.gen as keyof typeof HETU_MAP],
     ]
 
-    const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3'
+    const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3' || lotteryType === 'pl5'
     const reds = is3D
       ? pickDigits(preferredPool, cfg.redCount)
       : pickFromPool(preferredPool, cfg.redRange, cfg.redCount)
@@ -222,7 +222,7 @@ export function generateMetaphysicalNumbers(
   // 2. 周易梅花易数
   if (method === 'iching_hexagram') {
     const hex = AUSPICIOUS_HEXAGRAMS[Math.floor(Math.random() * AUSPICIOUS_HEXAGRAMS.length)]
-    const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3'
+    const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3' || lotteryType === 'pl5'
 
     const reds = is3D
       ? pickDigits(hex.keyNumbers, cfg.redCount)
@@ -266,7 +266,7 @@ export function generateMetaphysicalNumbers(
       { star: '禄存坐贵', desc: '天禄解厄，稳若泰山，数理对称规整，和值平衡适中。', nums: [3, 9, 15, 21, 25, 27, 33] },
     ]
     const chosen = starsPool[Math.floor(Math.random() * starsPool.length)]
-    const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3'
+    const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3' || lotteryType === 'pl5'
 
     const reds = is3D
       ? pickDigits(chosen.nums, cfg.redCount)
@@ -303,7 +303,7 @@ export function generateMetaphysicalNumbers(
 
   // 4. 奇门时空纳吉 (默认)
   const qimenPool = [3, 6, 8, 9, 15, 18, 21, 24, 27, 30, 33]
-  const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3'
+  const is3D = lotteryType === 'fc3d' || lotteryType === 'pl3' || lotteryType === 'pl5'
   const reds = is3D
     ? pickDigits(qimenPool, cfg.redCount)
     : pickFromPool(qimenPool, cfg.redRange, cfg.redCount)

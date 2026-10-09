@@ -4,7 +4,7 @@
    - 提供开奖记录、号码区间、冷热遗漏统计、和值/奇偶/大小计算
    ============================================================ */
 
-export type LotteryType = 'ssq' | 'dlt' | 'fc3d' | 'pl3' | 'kl8'
+export type LotteryType = 'ssq' | 'dlt' | 'fc3d' | 'pl3' | 'pl5' | 'kl8'
 
 export interface LotteryConfig {
   id: LotteryType
@@ -66,6 +66,17 @@ export const LOTTERY_CONFIGS: Record<LotteryType, LotteryConfig> = {
     desc: '百位、十位、个位 (各0-9)',
     redRange: [0, 9],
     redCount: 3,
+    drawDays: '每日 21:25',
+    unitPrice: 2,
+  },
+  pl5: {
+    id: 'pl5',
+    name: '排列5',
+    category: '体彩',
+    fullName: '中国体育彩票 · 排列5',
+    desc: '万位、千位、百位、十位、个位 (各0-9)',
+    redRange: [0, 9],
+    redCount: 5,
     drawDays: '每日 21:25',
     unitPrice: 2,
   },
@@ -152,6 +163,19 @@ export const PL3_RECENT_DRAWS: LotteryDraw[] = [
   { issue: '2026073', date: '2026-03-20', reds: [7, 3, 5], blues: [] },
 ]
 
+export const PL5_RECENT_DRAWS: LotteryDraw[] = [
+  { issue: '2026078', date: '2026-03-25', reds: [6, 2, 9, 4, 1], blues: [] },
+  { issue: '2026077', date: '2026-03-24', reds: [3, 8, 1, 7, 5], blues: [] },
+  { issue: '2026076', date: '2026-03-23', reds: [5, 0, 7, 2, 8], blues: [] },
+  { issue: '2026075', date: '2026-03-22', reds: [9, 4, 2, 6, 3], blues: [] },
+  { issue: '2026074', date: '2026-03-21', reds: [1, 6, 8, 0, 9], blues: [] },
+  { issue: '2026073', date: '2026-03-20', reds: [7, 3, 5, 8, 2], blues: [] },
+  { issue: '2026072', date: '2026-03-19', reds: [4, 9, 0, 1, 6], blues: [] },
+  { issue: '2026071', date: '2026-03-18', reds: [2, 5, 7, 3, 8], blues: [] },
+  { issue: '2026070', date: '2026-03-17', reds: [8, 1, 4, 9, 0], blues: [] },
+  { issue: '2026069', date: '2026-03-16', reds: [0, 7, 3, 5, 2], blues: [] },
+]
+
 export const KL8_RECENT_DRAWS: LotteryDraw[] = [
   {
     issue: '2026078',
@@ -178,6 +202,8 @@ export function getLotteryDraws(type: LotteryType): LotteryDraw[] {
       return FC3D_RECENT_DRAWS
     case 'pl3':
       return PL3_RECENT_DRAWS
+    case 'pl5':
+      return PL5_RECENT_DRAWS
     case 'kl8':
       return KL8_RECENT_DRAWS
     default:

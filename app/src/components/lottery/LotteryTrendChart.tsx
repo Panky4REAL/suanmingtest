@@ -181,8 +181,9 @@ export function LotteryTrendChart() {
     }
   }, [features, cfg.redCount])
 
-  // 辅助格式化数字为两位
-  const formatBall = (n: number) => n.toString().padStart(2, '0')
+  // 辅助格式化数字 (3D/排列3/排列5展示单数字0-9，双色球/大乐透展示两位01-35)
+  const isDigitType = activeType === 'fc3d' || activeType === 'pl3' || activeType === 'pl5'
+  const formatBall = (n: number) => (isDigitType ? n.toString() : n.toString().padStart(2, '0'))
 
   return (
     <div className="space-y-6">
