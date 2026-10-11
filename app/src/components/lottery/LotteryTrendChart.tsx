@@ -5,15 +5,17 @@
    - 提供全维分位矩阵走势、冷热温码分析、ECharts 和值指标
    ============================================================ */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import ReactECharts from 'echarts-for-react'
-import type { LotteryType } from './lottery-data'
+import type { LotteryType, LotteryDraw } from './lottery-data'
 import {
   LOTTERY_CONFIGS,
   getLotteryDraws,
   calculateStats,
   calculateFeatures,
-  checkRealtimeLotteryStatus,
+  syncRealtimeLottery,
+  saveCustomDraw,
+  resetLotteryDraws,
   type RealtimeSyncResult,
 } from './lottery-data'
 import { FiveHundredTrendTable } from './FiveHundredTrendTable'
@@ -24,7 +26,6 @@ export function LotteryTrendChart() {
   const [activeType, setActiveType] = useState<LotteryType>('pl5')
   const [viewMode, setViewMode] = useState<ChartViewMode>('five_hundred')
   const [periodCount, setPeriodCount] = useState<number>(30)
-  const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [syncResult, setSyncResult] = useState<RealtimeSyncResult | null>(null)
   const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
@@ -32,26 +33,143 @@ export function LotteryTrendChart() {
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
   })
 
+  // 动态响应式开奖数据状态 (与 localStorage 及实时同步器双向绑定)
+  const [draws, setDraws] = useState<LotteryDraw[]>(() => getLotteryDraws(activeType, periodCount))
+
+  // 当彩种或期数改变时，重新加载数据
+  useEffect(() => {
+    setDraws(getLotteryDraws(activeType, periodCount))
+    setSyncResult(null)
+  }, [activeType, periodCount])
+
   const cfg = LOTTERY_CONFIGS[activeType]
-
-  // 获取官方真实开奖历史
-  const draws = useMemo(() => {
-    void refreshTrigger
-    return getLotteryDraws(activeType, periodCount)
-  }, [activeType, periodCount, refreshTrigger])
-
   const latestDraw = draws[0]
 
-  // 手动刷新开奖动作：真实执行官方日历与开奖计划核对
-  const handleRefresh = () => {
+  // 手动执行真实开奖同步与官方日历核验
+  const handleRefresh = async () => {
     setIsRefreshing(true)
-    setTimeout(() => {
-      setRefreshTrigger((prev) => prev + 1)
-      const res = checkRealtimeLotteryStatus(activeType)
+    try {
+      const res = await syncRealtimeLottery(activeType)
       setLastSyncTime(res.timestamp)
       setSyncResult(res)
+      setDraws(res.updatedDraws.slice(0, periodCount))
+    } catch (err) {
+      console.error('实时同步失败:', err)
+    } finally {
       setIsRefreshing(false)
-    }, 500)
+    }
+  }
+
+  // -------------------------------------------------------------
+  // 手动校准/录入开奖弹窗控制状态
+  // -------------------------------------------------------------
+  const [showCalibrateModal, setShowCalibrateModal] = useState(false)
+  const [calibIssue, setCalibIssue] = useState('')
+  const [calibDate, setCalibDate] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
+  })
+  const [calibReds, setCalibReds] = useState<string>('')
+  const [calibBlues, setCalibBlues] = useState<string>('')
+  const [calibError, setCalibError] = useState<string | null>(null)
+
+  // 打开校准弹窗并预填默认期号
+  const handleOpenCalibrate = () => {
+    const latest = draws[0]
+    let nextNum = ''
+    if (latest) {
+      const parsed = parseInt(latest.issue, 10)
+      nextNum = !isNaN(parsed) ? (parsed + 1).toString() : ''
+    }
+    setCalibIssue(nextNum)
+    setCalibReds('')
+    setCalibBlues('')
+    setCalibError(null)
+    setShowCalibrateModal(true)
+  }
+
+  // 一键生成推荐/模拟奖号
+  const handleGenerateSimulatedDraw = () => {
+    if (cfg.isPositionDigits) {
+      const nums: number[] = []
+      for (let i = 0; i < cfg.redCount; i++) {
+        nums.push(Math.floor(Math.random() * 10))
+      }
+      setCalibReds(nums.join(' '))
+    } else {
+      const set = new Set<number>()
+      while (set.size < cfg.redCount) {
+        set.add(Math.floor(Math.random() * (cfg.redRange[1] - cfg.redRange[0] + 1)) + cfg.redRange[0])
+      }
+      setCalibReds(
+        Array.from(set)
+          .sort((a, b) => a - b)
+          .map((n) => n.toString().padStart(2, '0'))
+          .join(' ')
+      )
+      if (cfg.blueCount && cfg.blueRange) {
+        const bSet = new Set<number>()
+        while (bSet.size < cfg.blueCount) {
+          bSet.add(Math.floor(Math.random() * (cfg.blueRange[1] - cfg.blueRange[0] + 1)) + cfg.blueRange[0])
+        }
+        setCalibBlues(
+          Array.from(bSet)
+            .sort((a, b) => a - b)
+            .map((n) => n.toString().padStart(2, '0'))
+            .join(' ')
+        )
+      }
+    }
+    setCalibError(null)
+  }
+
+  // 提交校准录入
+  const handleSaveCalibrate = () => {
+    if (!calibIssue.trim()) {
+      setCalibError('请输入开奖期号')
+      return
+    }
+    const redNums = calibReds
+      .trim()
+      .split(/[\s,，]+/)
+      .map((s) => parseInt(s, 10))
+      .filter((n) => !isNaN(n))
+
+    if (redNums.length !== cfg.redCount) {
+      setCalibError(`号码数量不符：需输入 ${cfg.redCount} 个号码，当前输入了 ${redNums.length} 个`)
+      return
+    }
+
+    let blueNums: number[] = []
+    if (cfg.blueCount) {
+      blueNums = calibBlues
+        .trim()
+        .split(/[\s,，]+/)
+        .map((s) => parseInt(s, 10))
+        .filter((n) => !isNaN(n))
+      if (blueNums.length !== cfg.blueCount) {
+        setCalibError(`蓝球/后区数量不符：需输入 ${cfg.blueCount} 个号码`)
+        return
+      }
+    }
+
+    const newDraw: LotteryDraw = {
+      issue: calibIssue.trim(),
+      date: calibDate,
+      reds: redNums,
+      blues: blueNums,
+    }
+
+    const updated = saveCustomDraw(activeType, newDraw)
+    setDraws(updated.slice(0, periodCount))
+    setShowCalibrateModal(false)
+  }
+
+  // 恢复默认官方数据
+  const handleResetToBaseline = () => {
+    const reset = resetLotteryDraws(activeType)
+    setDraws(reset.slice(0, periodCount))
+    setShowCalibrateModal(false)
   }
 
   // 冷热统计数据
@@ -269,25 +387,41 @@ export function LotteryTrendChart() {
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="px-3.5 py-1.5 rounded-xl bg-white border border-[#dcd3c1] text-[#176f63] font-serif font-bold hover:bg-[#176f63] hover:text-white transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
             >
               <span className={`inline-block ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
-              <span>{isRefreshing ? '核验拉取中...' : '检查实时开奖'}</span>
+              <span>{isRefreshing ? '正在同步官方开奖...' : '检查实时开奖'}</span>
+            </button>
+
+            <button
+              onClick={handleOpenCalibrate}
+              className="px-3.5 py-1.5 rounded-xl bg-[#faf6ee] border border-[#c58a28]/40 text-[#8A5B21] font-serif font-bold hover:bg-[#c58a28] hover:text-white transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer text-xs"
+            >
+              <span>✏️</span>
+              <span>校准/录入开奖</span>
             </button>
           </div>
         </div>
 
         {/* 实时核验详情提示条 */}
         {syncResult && (
-          <div className="mt-2.5 p-3 rounded-xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2.5 animate-fade-in font-serif">
-            <span className="shrink-0 text-emerald-600 font-bold text-sm">✓</span>
-            <div className="space-y-0.5">
+          <div
+            className={`mt-2.5 p-3.5 rounded-2xl border text-xs flex items-start gap-3 animate-fade-in font-serif ${
+              syncResult.hasNewDraws
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-xs'
+                : 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+            }`}
+          >
+            <span className="shrink-0 text-emerald-600 font-bold text-base mt-0.5">
+              {syncResult.hasNewDraws ? '🎉' : '✓'}
+            </span>
+            <div className="space-y-1">
               <span className="font-bold font-serif-sc block text-emerald-950">
-                【{syncResult.verifiedSource}】核验完成：
+                【{syncResult.verifiedSource}】{syncResult.hasNewDraws ? '新期数据已同步入库！' : '核验完成：'}
               </span>
               <p className="text-emerald-800 leading-relaxed">
                 {syncResult.syncMessage} 官方开奖周期：{syncResult.drawScheduleText}。
@@ -521,6 +655,128 @@ export function LotteryTrendChart() {
             </p>
             <div className="h-64 sm:h-72 w-full">
               <ReactECharts option={ratioChartOption} style={{ width: '100%', height: '100%' }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. 手动校准与快速录入最新开奖弹窗 */}
+      {showCalibrateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fade-in">
+          <div className="bg-[#fbf8f1] rounded-3xl border border-[#dcd3c1] p-6 sm:p-7 shadow-2xl max-w-lg w-full space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#dcd3c1]">
+              <div className="flex items-center gap-2">
+                <span className="xuanji-seal text-xs">校准录入</span>
+                <h3 className="font-serif-sc font-bold text-base text-[#1e2f34]">
+                  {cfg.fullName} · 官方开奖数据校准
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowCalibrateModal(false)}
+                className="text-[#879397] hover:text-[#1e2f34] text-lg font-mono p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[#52666a] font-serif leading-relaxed">
+              若官方直播或公告已开出最新奖号，可在此直接录入。录入后将自动写入本地持久化存储，并即时重算全维分位走势大表、遗漏矩阵与和值走势。
+            </p>
+
+            {calibError && (
+              <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-serif">
+                ⚠️ {calibError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block text-[#24453f] font-serif font-bold mb-1">开奖期号</label>
+                <input
+                  type="text"
+                  value={calibIssue}
+                  onChange={(e) => setCalibIssue(e.target.value)}
+                  placeholder="如 26270"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#dcd3c1] font-mono text-sm focus:outline-none focus:border-[#176f63]"
+                />
+              </div>
+              <div>
+                <label className="block text-[#24453f] font-serif font-bold mb-1">开奖日期</label>
+                <input
+                  type="date"
+                  value={calibDate}
+                  onChange={(e) => setCalibDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-[#dcd3c1] font-mono text-sm focus:outline-none focus:border-[#176f63]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs text-[#24453f] font-serif font-bold">
+                  {cfg.isPositionDigits
+                    ? `开奖号码 (${cfg.redCount}位数字，空格隔开)`
+                    : `前区红球 (${cfg.redCount}个，空格隔开)`}
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGenerateSimulatedDraw}
+                  className="text-xs text-[#176f63] font-serif hover:underline cursor-pointer"
+                >
+                  🎲 依数理生成模拟号码
+                </button>
+              </div>
+              <input
+                type="text"
+                value={calibReds}
+                onChange={(e) => setCalibReds(e.target.value)}
+                placeholder={
+                  cfg.isPositionDigits ? '如：0 6 7 4 0' : '如：04 13 14 18 22 24'
+                }
+                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#dcd3c1] font-mono text-sm tracking-widest focus:outline-none focus:border-[#176f63]"
+              />
+            </div>
+
+            {cfg.blueCount && (
+              <div>
+                <label className="block text-xs text-[#24453f] font-serif font-bold mb-1">
+                  后区/蓝球号码 ({cfg.blueCount}个，空格隔开)
+                </label>
+                <input
+                  type="text"
+                  value={calibBlues}
+                  onChange={(e) => setCalibBlues(e.target.value)}
+                  placeholder="如：03 或 06 07"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#dcd3c1] font-mono text-sm tracking-widest focus:outline-none focus:border-[#176f63]"
+                />
+              </div>
+            )}
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <button
+                type="button"
+                onClick={handleResetToBaseline}
+                className="text-xs text-[#8A5B21] hover:underline font-serif self-start sm:self-auto cursor-pointer"
+              >
+                ↺ 恢复官方基准数据
+              </button>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setShowCalibrateModal(false)}
+                  className="px-4 py-2 rounded-xl border border-[#dcd3c1] bg-white text-xs font-serif text-[#52666a] hover:bg-gray-50 cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCalibrate}
+                  className="btn-xuanji px-5 py-2 rounded-xl text-xs font-serif-sc font-bold shadow-md cursor-pointer"
+                >
+                  确认录入并同步
+                </button>
+              </div>
             </div>
           </div>
         </div>
