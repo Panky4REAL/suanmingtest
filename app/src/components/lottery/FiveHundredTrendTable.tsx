@@ -19,11 +19,15 @@ import {
 interface FiveHundredTrendTableProps {
   lotteryType: LotteryType
   draws: LotteryDraw[]
+  periodCount?: number
+  onPeriodCountChange?: (count: number) => void
 }
 
 export function FiveHundredTrendTable({
   lotteryType,
   draws,
+  periodCount,
+  onPeriodCountChange,
 }: FiveHundredTrendTableProps) {
   const cfg = LOTTERY_CONFIGS[lotteryType]
 
@@ -220,6 +224,30 @@ export function FiveHundredTrendTable({
             <span>模拟选号台</span>
           </label>
         </div>
+
+        {/* 统计范围快捷切换 */}
+        {onPeriodCountChange && (
+          <div className="flex items-center gap-1.5 py-1 px-2.5 rounded-xl bg-white border border-[#dcd3c1] text-xs font-serif shadow-2xs">
+            <span className="text-[#879397] text-[11px]">统计范围:</span>
+            {[30, 50, 100].map((cnt) => (
+              <button
+                key={cnt}
+                type="button"
+                onClick={() => onPeriodCountChange(cnt)}
+                className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold transition-all cursor-pointer ${
+                  periodCount === cnt
+                    ? 'bg-[#176f63] text-white shadow-xs'
+                    : 'text-[#55736b] hover:bg-gray-100'
+                }`}
+              >
+                近{cnt}期
+              </button>
+            ))}
+            <span className="text-[#176f63] font-mono text-[10px] ml-1 font-bold">
+              (实显 {draws.length} 期)
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 全维分位标准走势大表 */}

@@ -526,21 +526,29 @@ export function LotteryTrendChart() {
             <button
               key={cnt}
               onClick={() => setPeriodCount(cnt)}
-              className={`px-2.5 py-1 rounded-lg font-mono text-xs transition-colors ${
+              className={`px-2.5 py-1 rounded-lg font-mono text-xs transition-colors cursor-pointer ${
                 periodCount === cnt
-                  ? 'bg-[#176f63] text-white font-bold'
+                  ? 'bg-[#176f63] text-white font-bold shadow-xs'
                   : 'bg-white text-[#55736b] border border-[#dcd3c1] hover:bg-white/80'
               }`}
             >
               近{cnt}期
             </button>
           ))}
+          <span className="text-[#176f63] font-mono text-[11px] font-bold ml-1">
+            (共{draws.length}期)
+          </span>
         </div>
       </div>
 
-      {/* 1. 500.com 专业走势大表 */}
+      {/* 1. 全维分位专业走势大表 */}
       {viewMode === 'five_hundred' && (
-        <FiveHundredTrendTable lotteryType={activeType} draws={draws} />
+        <FiveHundredTrendTable
+          lotteryType={activeType}
+          draws={draws}
+          periodCount={periodCount}
+          onPeriodCountChange={setPeriodCount}
+        />
       )}
 
       {/* 2. 号码冷热与遗漏看板 */}

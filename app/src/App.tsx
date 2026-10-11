@@ -27,7 +27,7 @@ import { LotteryView } from '@/components/lottery'
 import { useChartStore, useProfileStore } from '@/stores'
 import { generateChart, type BirthInfo } from '@/lib/astro'
 
-export type TabType = 'kline' | 'avatar' | 'fortune' | 'match' | 'profile'
+export type TabType = 'kline' | 'avatar' | 'fortune' | 'lottery' | 'match' | 'profile'
 
 const NAV_ITEMS: Array<{
   key: TabType
@@ -39,6 +39,7 @@ const NAV_ITEMS: Array<{
   { key: 'kline', label: '人生K线', sublabel: 'Life K-Line & Chart', icon: '📈', badge: '全景' },
   { key: 'avatar', label: '原型×MBTI', sublabel: 'Mind & Archetype', icon: '🎭', badge: '全息' },
   { key: 'fortune', label: '时运指南', sublabel: 'Daily & Yearly', icon: '📅', badge: '时运' },
+  { key: 'lottery', label: '偏财彩数', sublabel: 'Wealth & Lottery', icon: '🎱', badge: '走势' },
   { key: 'match', label: '关系合盘', sublabel: 'Synastry', icon: '👥' },
   { key: 'profile', label: '档案中心', sublabel: 'Profiles & History', icon: '🗂️' },
 ]
@@ -53,7 +54,7 @@ export default function App() {
   // 子功能状态整合
   const [klineViewMode, setKlineViewMode] = useState<'kline' | 'chart'>('kline')
   const [avatarSubTab, setAvatarSubTab] = useState<'persona' | 'mbti' | 'chat'>('persona')
-  const [fortuneSubTab, setFortuneSubTab] = useState<'daily' | 'yearly' | 'lottery'>('daily')
+  const [fortuneSubTab, setFortuneSubTab] = useState<'daily' | 'yearly'>('daily')
 
   // 全局弹窗
   const [showSettings, setShowSettings] = useState(false)
@@ -94,8 +95,7 @@ export default function App() {
       setActiveTab('fortune')
       setFortuneSubTab('daily')
     } else if (tab === 'lottery') {
-      setActiveTab('fortune')
-      setFortuneSubTab('lottery')
+      setActiveTab('lottery')
     } else if (tab === 'chart') {
       setActiveTab('kline')
       setKlineViewMode('chart')
@@ -393,7 +393,8 @@ export default function App() {
                 <span className="font-serif-sc font-bold text-base sm:text-lg text-[#1e2f34]">
                   {activeTab === 'kline' && (klineViewMode === 'kline' ? '人生K线 · 大运走势' : '正统紫微 · 十二宫全盘')}
                   {activeTab === 'avatar' && (avatarSubTab === 'persona' ? '命运分身 · 人格原型' : avatarSubTab === 'mbti' ? 'MBTI×命理 · 双维全息' : '分身对话 · 智慧解惑')}
-                  {activeTab === 'fortune' && (fortuneSubTab === 'daily' ? '每日流日 · 吉凶宜忌' : fortuneSubTab === 'yearly' ? '年度大运 · 四化吉凶' : '玄机彩数 · 走势与灵机')}
+                  {activeTab === 'fortune' && (fortuneSubTab === 'daily' ? '每日流日 · 吉凶宜忌' : '年度大运 · 四化吉凶')}
+                  {activeTab === 'lottery' && '偏财彩数 · 官方走势与周易灵机'}
                   {activeTab === 'match' && '关系合盘 · 深度契合'}
                   {activeTab === 'profile' && '档案中心 · 多盘与资产'}
                 </span>
@@ -614,7 +615,7 @@ export default function App() {
           )}
 
           {/* ============================================================
-             3. 时运指南 (整合：每日流日 + 当年大运 + 偏财彩数)
+             3. 时运指南 (整合：每日流日 + 当年大运)
              ============================================================ */}
           {activeTab === 'fortune' && (
             !chart ? (
@@ -623,7 +624,7 @@ export default function App() {
               </div>
             ) : (
               <div className="space-y-6 animate-fade-in">
-                {/* 顶部三段式时运子导航 */}
+                {/* 顶部二段式时运子导航 */}
                 <div className="flex items-center justify-center">
                   <div className="p-1 rounded-2xl bg-white/80 border border-[#dcd3c1] shadow-2xs flex items-center gap-1.5">
                     <button
@@ -651,27 +652,22 @@ export default function App() {
                       <span>年度大运</span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#c58a28] text-white font-mono">流年</span>
                     </button>
-
-                    <button
-                      onClick={() => setFortuneSubTab('lottery')}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-serif-sc text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                        fortuneSubTab === 'lottery'
-                          ? 'bg-[#176f63] text-white shadow-xs'
-                          : 'text-[#55736b] hover:text-[#1e2f34] hover:bg-black/5'
-                      }`}
-                    >
-                      <span>🎱</span>
-                      <span>偏财彩数</span>
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#c58a28]/20 text-[#8A5B21] font-mono">走势</span>
-                    </button>
                   </div>
                 </div>
 
                 {fortuneSubTab === 'daily' && <DailyFortune />}
                 {fortuneSubTab === 'yearly' && <YearlyFortune />}
-                {fortuneSubTab === 'lottery' && <LotteryView />}
               </div>
             )
+          )}
+
+          {/* ============================================================
+             4. 偏财彩数 (独立一级核心模块，免输入生辰直接把玩)
+             ============================================================ */}
+          {activeTab === 'lottery' && (
+            <div className="space-y-6 animate-fade-in">
+              <LotteryView />
+            </div>
           )}
 
           {/* ============================================================
