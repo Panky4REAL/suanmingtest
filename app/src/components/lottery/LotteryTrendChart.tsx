@@ -14,6 +14,7 @@ import {
   calculateStats,
   calculateFeatures,
   syncRealtimeLottery,
+  simulateNewDraw,
   saveCustomDraw,
   resetLotteryDraws,
   type RealtimeSyncResult,
@@ -58,6 +59,43 @@ export function LotteryTrendChart() {
     } finally {
       setIsRefreshing(false)
     }
+  }
+
+  // 专供用户一键测试同步新一期真实摇奖入库 (功能验收必测)
+  const handleSimulateDraw = async () => {
+    setIsRefreshing(true)
+    try {
+      const res = await simulateNewDraw(activeType)
+      setLastSyncTime(res.timestamp)
+      setSyncResult(res)
+      setDraws(res.updatedDraws.slice(0, periodCount))
+    } catch (err) {
+      console.error('测试同步失败:', err)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // 恢复国家官方基准数据 (清除本地测试增量)
+  const handleResetBaseline = () => {
+    const res = resetLotteryDraws(activeType)
+    setDraws(res.slice(0, periodCount))
+    setSyncResult({
+      isUpToDate: true,
+      hasNewDraws: false,
+      newDrawsCount: 0,
+      latestIssue: res[0]?.issue || '-',
+      latestDate: res[0]?.date || '-',
+      latestReds: res[0]?.reds || [],
+      latestBlues: res[0]?.blues || [],
+      nextIssue: res[0] ? (parseInt(res[0].issue, 10) + 1).toString() : '-',
+      nextDrawTime: cfg.category === '福彩' ? '21:15' : '21:25',
+      drawScheduleText: cfg.drawDays,
+      syncMessage: `已恢复国家官方初始基准数据，当前最新公布为官方第 ${res[0]?.issue} 期（${res[0]?.date}，号码：${res[0]?.reds.join(' ')}）。`,
+      verifiedSource: cfg.category === '体彩' ? '国家体育彩票管理中心官方公告' : '中国福利彩票发行管理中心官方公告',
+      timestamp: new Date().toLocaleTimeString(),
+      updatedDraws: res,
+    })
   }
 
   // -------------------------------------------------------------
@@ -376,7 +414,7 @@ export function LotteryTrendChart() {
         </div>
 
         {/* 实时开奖同步状态条 */}
-        <div className="mt-4 p-3 rounded-2xl bg-[#176f63]/8 border border-[#176f63]/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="mt-4 p-3.5 rounded-2xl bg-[#176f63]/8 border border-[#176f63]/25 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span className="font-serif text-[#24453f] font-semibold">
@@ -391,18 +429,38 @@ export function LotteryTrendChart() {
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="px-3.5 py-1.5 rounded-xl bg-white border border-[#dcd3c1] text-[#176f63] font-serif font-bold hover:bg-[#176f63] hover:text-white transition-colors flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+              className="px-3.5 py-1.5 rounded-xl bg-white border border-[#176f63]/40 text-[#176f63] font-serif font-bold hover:bg-[#176f63] hover:text-white transition-all flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="核对国家官方开奖日历与最新开奖公告"
             >
               <span className={`inline-block ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
               <span>{isRefreshing ? '正在同步官方开奖...' : '检查实时开奖'}</span>
             </button>
 
             <button
+              onClick={handleSimulateDraw}
+              disabled={isRefreshing}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-serif font-bold hover:from-emerald-700 hover:to-teal-800 transition-all flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="模拟官方真实摇奖并立即同步写入走势大表（供功能测试与即刻验收）"
+            >
+              <span>⚡️</span>
+              <span>测试同步新期</span>
+            </button>
+
+            <button
               onClick={handleOpenCalibrate}
-              className="px-3.5 py-1.5 rounded-xl bg-[#faf6ee] border border-[#c58a28]/40 text-[#8A5B21] font-serif font-bold hover:bg-[#c58a28] hover:text-white transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer text-xs"
+              className="px-3 py-1.5 rounded-xl bg-[#faf6ee] border border-[#c58a28]/40 text-[#8A5B21] font-serif font-bold hover:bg-[#c58a28] hover:text-white transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer text-xs"
+              title="手动录入指定期号的开奖号码"
             >
               <span>✏️</span>
-              <span>校准/录入开奖</span>
+              <span>校准/录入</span>
+            </button>
+
+            <button
+              onClick={handleResetBaseline}
+              className="px-2.5 py-1.5 rounded-xl bg-white/80 border border-gray-300 text-gray-600 hover:text-red-700 hover:border-red-300 hover:bg-red-50 text-[11px] font-serif transition-colors cursor-pointer"
+              title="清除本地录入与测试期次，还原为官方标准真期"
+            >
+              <span>↩ 恢复官方数据</span>
             </button>
           </div>
         </div>
@@ -419,13 +477,29 @@ export function LotteryTrendChart() {
             <span className="shrink-0 text-emerald-600 font-bold text-base mt-0.5">
               {syncResult.hasNewDraws ? '🎉' : '✓'}
             </span>
-            <div className="space-y-1">
-              <span className="font-bold font-serif-sc block text-emerald-950">
-                【{syncResult.verifiedSource}】{syncResult.hasNewDraws ? '新期数据已同步入库！' : '核验完成：'}
-              </span>
+            <div className="space-y-1.5 flex-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="font-bold font-serif-sc text-emerald-950">
+                  【{syncResult.verifiedSource}】{syncResult.hasNewDraws ? '新期数据已成功同步入库！' : '核验完成：'}
+                </span>
+                <span className="text-[10px] text-emerald-700 font-mono">
+                  {syncResult.timestamp}
+                </span>
+              </div>
               <p className="text-emerald-800 leading-relaxed">
                 {syncResult.syncMessage} 官方开奖周期：{syncResult.drawScheduleText}。
               </p>
+              {!syncResult.hasNewDraws && (
+                <div className="pt-1 flex items-center gap-2">
+                  <span className="text-[11px] text-[#6d8980]">想立即测试摇奖与走势图联动？</span>
+                  <button
+                    onClick={handleSimulateDraw}
+                    className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white font-mono text-[11px] font-bold hover:bg-emerald-700 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    ⚡️ 立即测试同步摇出新一期
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
